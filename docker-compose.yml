@@ -76,6 +76,7 @@ services:
       dockerfile: docker/dbt/Dockerfile
     volumes:
       - ./dbt:/dbt
+      - ./dbt/profiles:/root/.dbt
     depends_on:
       - spark-thrift
 

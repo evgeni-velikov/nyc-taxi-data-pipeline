@@ -2,6 +2,8 @@
 .idea/
 data
 data/
+minio
+minio/
 notebooks/testing.py
 
 # Byte-compiled / optimized / DLL files

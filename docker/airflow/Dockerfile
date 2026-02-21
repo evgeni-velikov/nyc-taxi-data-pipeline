@@ -1,5 +1,5 @@
 FROM apache/airflow:2.9.3
 
-USER root
-RUN pip install dbt-core dbt-spark[PyHive] pyspark boto3
+COPY requirements /tmp/requirements
 USER airflow
+RUN pip install --no-cache-dir -r /tmp/requirements/airflow.txt

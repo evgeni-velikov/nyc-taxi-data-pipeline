@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 
-RUN pip install dbt-core dbt-spark[PyHive]
+COPY requirements /tmp/requirements
+RUN pip install --no-cache-dir -r /tmp/requirements/dbt.txt
 
 WORKDIR /dbt

@@ -1,0 +1,6 @@
+-r base.txt
+
+dbt-core
+dbt-spark[PyHive]
+dbt-snowflake
+pyspark

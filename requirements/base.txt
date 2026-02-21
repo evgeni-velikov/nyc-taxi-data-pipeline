@@ -1,0 +1,9 @@
+python-dotenv
+pydantic
+boto3
+s3fs
+pytest
+pytest-cov
+ruff
+mypy
+pre-commit

@@ -1,0 +1,9 @@
+apache-airflow
+pytest
+pyspark==4.0.0
+delta-spark==4.0.1
+python-dateutil
+dbt-core
+dbt-databricks
+dbt-snowflake
+dbt-spark[PyHive]

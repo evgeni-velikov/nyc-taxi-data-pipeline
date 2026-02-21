@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+      POSTGRES_DB: metastore
+
+  hive-metastore:
+    image: bitsondatadev/hive-metastore:latest
+    environment:
+      DB_DRIVER: postgres
+    depends_on:
+      - postgres
+
+  spark-master:
+    build: ./docker/spark
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+
+  spark-worker:
+    build: ./docker/spark
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+
+  spark-thrift:
+    build: ./docker/spark
+    command: >
+      /opt/bitnami/spark/sbin/start-thriftserver.sh
+    ports:
+      - "10000:10000"
+    depends_on:
+      - spark-master
+      - hive-metastore
+
+  minio:
+    image: minio/minio
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+
+  dbt:
+    build: ./docker/dbt
+    volumes:
+      - ./dbt:/dbt
+    depends_on:
+      - spark-thrift
+
+  airflow:
+    build: ./docker/airflow
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    ports:
+      - "8081:8080"
+    depends_on:
+      - spark-master
+      - spark-thrift

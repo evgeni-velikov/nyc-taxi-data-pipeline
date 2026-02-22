@@ -20,5 +20,8 @@ ENV PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
 ENV PYSPARK_PYTHON=python3
 ENV PYSPARK_DRIVER_PYTHON=python3
 
+COPY docker/spark/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+COPY docker/spark/hive-site.xml /opt/spark/conf/hive-site.xml
 COPY requirements /tmp/requirements
+RUN mkdir -p /opt/spark/warehouse && chmod -R 777 /opt/spark/warehouse
 RUN pip install --no-cache-dir -r /tmp/requirements/spark.txt

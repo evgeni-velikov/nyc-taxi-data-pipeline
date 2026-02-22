@@ -10,6 +10,9 @@ __MACOSX/
 .spark-warehouse/
 dbt/.user.yml
 .DS_Store
+warehouse
+warehouse/
+src/test.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    tables:
+      - name: yellow_trip_data
+      - name: green_trip_data
+      - name: fhv_trip_data

@@ -14,6 +14,12 @@ Included services:
 
 ## 🚀 First-time setup
 
+Create a local directory for warehouse data if not exists:
+
+```bash
+mkdir warehouse
+```
+
 Build all images and initialize the Airflow metadata database.
 
 ```bash

@@ -1,21 +1,45 @@
 services:
 
   # ---------------------------
-  # Postgres (Hive metastore)
+  # Mysql (Hive metastore)
   # ---------------------------
-  postgres:
-    image: postgres:15
+  mysql:
+    image: mysql:8
     environment:
-      POSTGRES_USER: hive
-      POSTGRES_PASSWORD: hive
-      POSTGRES_DB: metastore
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: metastore
+      MYSQL_USER: hive
+      MYSQL_PASSWORD: hive
+    ports:
+      - "3306:3306"
 
   hive-metastore:
-    image: bitsondatadev/hive-metastore:latest
+    image: apache/hive:3.1.3
+    volumes:
+      - ./warehouse:/opt/spark/warehouse
+    container_name: hive-metastore
+    command: >
+      bash -c "
+      schematool -dbType mysql -initSchema &&
+      hive --service metastore
+      "
     environment:
-      DB_DRIVER: postgres
+      SERVICE_NAME: metastore
+      HIVE_METASTORE_DB_TYPE: mysql
+      HIVE_JDBC_URL: jdbc:mysql://mysql:3306/metastore
+      HIVE_JDBC_USERNAME: hive
+      HIVE_JDBC_PASSWORD: hive
     depends_on:
-      - postgres
+      mysql:
+        condition: service_started
+    ports:
+      - "9083:9083"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "pgrep -f HiveMetaStore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ---------------------------
   # Spark cluster
@@ -27,6 +51,8 @@ services:
     command: bash -c "/opt/spark/sbin/start-master.sh && tail -f /dev/null"
     volumes:
       - ./data:/data
+      - ./src:/app/src
+      - ./warehouse:/opt/spark/warehouse
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -38,19 +64,39 @@ services:
     command: bash -c "/opt/spark/sbin/start-worker.sh spark://spark-master:7077 && tail -f /dev/null"
     volumes:
       - ./data:/data
+      - ./warehouse:/opt/spark/warehouse
     depends_on:
       - spark-master
+    environment:
+      SPARK_WORKER_CORES: "8"
+      SPARK_WORKER_MEMORY: "6g"
 
   spark-thrift:
     build:
       context: .
       dockerfile: docker/spark/Dockerfile
-    command: bash -c "/opt/spark/sbin/start-thriftserver.sh && tail -f /dev/null"
+    command: >
+      bash -c "
+      echo 'Waiting for Hive Metastore to be ready...';
+      for i in {1..30}; do
+        if timeout 2 bash -c 'cat < /dev/null > /dev/tcp/hive-metastore/9083' 2>/dev/null; then
+          echo 'Hive Metastore is ready!';
+          break;
+        fi;
+        echo 'Waiting for Hive Metastore... attempt' \$i;
+        sleep 2;
+      done;
+      /opt/spark/sbin/start-thriftserver.sh --master spark://spark-master:7077 --conf spark.cores.max=1 --conf spark.executor.cores=1 --conf spark.executor.memory=1g --conf spark.dynamicAllocation.enabled=false && tail -f /dev/null
+      "
     ports:
       - "10000:10000"
+    volumes:
+      - ./warehouse:/opt/spark/warehouse
     depends_on:
-      - spark-master
-      - hive-metastore
+      spark-master:
+        condition: service_started
+      hive-metastore:
+        condition: service_healthy
 
   # ---------------------------
   # MinIO (S3 local)

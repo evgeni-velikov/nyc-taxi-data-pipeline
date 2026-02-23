@@ -20,21 +20,10 @@ Create a local directory for warehouse data if not exists:
 mkdir warehouse
 ```
 
-Build all images and initialize the Airflow metadata database.
+Build and run
 
 ```bash
 docker compose build
-
-docker compose run --rm airflow airflow db init
-
-docker compose run --rm airflow airflow users create \
-  --username admin \
-  --password admin \
-  --firstname admin \
-  --lastname admin \
-  --role Admin \
-  --email admin@example.com
-
 docker compose up -d
 ```
 

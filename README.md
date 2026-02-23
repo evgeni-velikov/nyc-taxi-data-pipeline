@@ -24,6 +24,7 @@ Build and run
 
 ```bash
 docker compose build
+docker compose run dbt dbt deps
 docker compose up -d
 ```
 

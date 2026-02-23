@@ -25,7 +25,7 @@ import_fhv_trip_data AS (
     {% endif %}
 ),
 
-fhv_trip_res AS (
+stg_fhv_trip_res AS (
     SELECT
         pickup_datetime,
         dropOff_datetime AS dropoff_datetime,
@@ -40,4 +40,4 @@ fhv_trip_res AS (
     FROM import_fhv_trip_data
 )
 
-SELECT * FROM fhv_trip_res
+SELECT * FROM stg_fhv_trip_res

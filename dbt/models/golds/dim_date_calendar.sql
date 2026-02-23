@@ -9,7 +9,7 @@ dim_date_spine AS (
         end_date="cast('2050-12-31' as date)"
     ) }}
 ),
-dim_date_res AS (
+dim_date_calendar_res AS (
     SELECT
         date_day AS date,
         CAST(TO_CHAR(date_day, 'YYYYMMDD') AS INT) AS date_key,
@@ -19,4 +19,4 @@ dim_date_res AS (
     FROM dim_date_spine
 )
 
-SELECT * FROM dim_date_res
+SELECT * FROM dim_date_calendar_res

@@ -26,4 +26,9 @@
     <value>hive</value>
   </property>
 
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/warehouse</value>
+  </property>
+
 </configuration>

@@ -9,7 +9,7 @@ spark = (
     .getOrCreate()
 )
 
-spark.sql("CREATE DATABASE IF NOT EXISTS bronze LOCATION '/opt/spark/warehouse/bronze.db'")
+spark.sql("CREATE DATABASE IF NOT EXISTS bronze")
 
 data = [
     Row(vendor_id=1, passenger_count=2, trip_distance=3.5),
@@ -33,4 +33,3 @@ spark.stop()
 # docker compose exec spark-thrift spark-sql
 # docker compose run --rm dbt dbt debug
 # docker compose run --rm dbt dbt run
-# LOCATION '/opt/spark/warehouse/bronze.db'

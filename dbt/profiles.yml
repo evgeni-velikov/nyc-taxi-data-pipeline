@@ -6,6 +6,6 @@ nyc_taxi_data_pipeline:
       method: thrift
       host: spark-thrift
       port: 10000
-      schema: default
+      schema: ""
       connect_timeout: 60
       threads: 3

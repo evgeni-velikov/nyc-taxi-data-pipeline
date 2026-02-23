@@ -6,9 +6,15 @@ model-paths: ["models"]
 #seed-paths: ["seeds"]
 #test-paths: ["tests"]
 #analysis-paths: ["analysis"]
-#macro-paths: ["macros"]
+macro-paths: ["macros"]
 #snapshot-paths: ["snapshots"]
 
 models:
   nyc_taxi_data_pipeline:
     +materialized: view
+    bronzes:
+      schema: bronze
+    silvers:
+      schema: silver
+    golds:
+      schema: gold

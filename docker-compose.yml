@@ -12,13 +12,15 @@ services:
       MYSQL_PASSWORD: hive
     ports:
       - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
 
   hive-metastore:
     image: apache/hive:3.1.3
     volumes:
       - ./docker/hive:/opt/hive/conf
       - ./drivers/mysql-connector-j-8.3.0.jar:/opt/hive/lib/mysql.jar
-      - ./warehouse:/opt/hive/data/warehouse
+      - ./warehouse:/warehouse
     container_name: hive-metastore
     entrypoint: /bin/bash
     command:
@@ -45,6 +47,7 @@ services:
   # Spark cluster
   # ---------------------------
   spark-master:
+    user: "0:0"
     build:
       context: .
       dockerfile: docker/spark/Dockerfile
@@ -52,19 +55,20 @@ services:
     volumes:
       - ./data:/data
       - ./src:/app/src
-      - ./warehouse:/opt/spark/warehouse
+      - ./warehouse:/warehouse
     ports:
       - "7077:7077"
       - "8080:8080"
 
   spark-worker:
+    user: "0:0"
     build:
       context: .
       dockerfile: docker/spark/Dockerfile
     command: bash -c "/opt/spark/sbin/start-worker.sh spark://spark-master:7077 && tail -f /dev/null"
     volumes:
       - ./data:/data
-      - ./warehouse:/opt/spark/warehouse
+      - ./warehouse:/warehouse
     depends_on:
       - spark-master
     environment:
@@ -72,6 +76,7 @@ services:
       SPARK_WORKER_MEMORY: "6g"
 
   spark-thrift:
+    user: "0:0"
     build:
       context: .
       dockerfile: docker/spark/Dockerfile
@@ -91,7 +96,7 @@ services:
     ports:
       - "10000:10000"
     volumes:
-      - ./warehouse:/opt/spark/warehouse
+      - ./warehouse:/warehouse
     depends_on:
       spark-master:
         condition: service_started
@@ -216,3 +221,6 @@ services:
         condition: service_completed_successfully
       airflow:
         condition: service_started
+
+volumes:
+  mysql-data:

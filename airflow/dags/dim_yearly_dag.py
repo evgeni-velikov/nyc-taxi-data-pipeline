@@ -3,7 +3,7 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from datetime import datetime, timedelta
 
 with DAG(
-    dag_id="dim_static_gold",
+    dag_id="dim_yearly_gold",
     start_date=datetime(2024,2,23),
     schedule="@yearly",
         catchup=False,

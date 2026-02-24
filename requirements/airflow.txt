@@ -4,3 +4,7 @@ dbt-core
 dbt-spark[PyHive]
 dbt-snowflake
 pyspark
+
+apache-airflow-providers-apache-spark
+apache-airflow-providers-docker
+apache-airflow-providers-amazon

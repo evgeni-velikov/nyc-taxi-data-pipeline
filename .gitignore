@@ -8,6 +8,7 @@ minio
 minio/
 dbt/logs/
 dbt/target/
+dbt/dbt_packages/
 __MACOSX/
 .spark-warehouse/
 dbt/.user.yml

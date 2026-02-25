@@ -1,7 +1,8 @@
-{{ config(materialized='table', alias='dim_date') }}
+{{ config(materialized='table') }}
 
 
 WITH
+
 dim_date_spine AS (
     {{ dbt_utils.date_spine(
         datepart="day",
@@ -9,13 +10,14 @@ dim_date_spine AS (
         end_date="cast('2050-12-31' as date)"
     ) }}
 ),
+
 dim_date_calendar_res AS (
     SELECT
-        date_day AS date,
-        CAST(TO_CHAR(date_day, 'YYYYMMDD') AS INT) AS date_key,
-        EXTRACT(year FROM date_day) AS year,
-        EXTRACT(month FROM date_day) AS month,
-        EXTRACT(day FROM date_day) AS day
+        CAST(date_day AS date) AS date,
+        CAST(date_format(date_day, 'yyyyMMdd') AS INT) AS date_key,
+        YEAR(date_day) AS year,
+        MONTH(date_day) AS month,
+        DAY(date_day) AS day
     FROM dim_date_spine
 )
 

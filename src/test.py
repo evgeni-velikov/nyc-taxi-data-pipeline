@@ -32,4 +32,4 @@ spark.stop()
 # docker compose exec spark-master spark-submit /app/src/test.py
 # docker compose exec spark-thrift spark-sql
 # docker compose run --rm dbt dbt debug
-# docker compose run --rm dbt dbt run
+# docker compose run --rm dbt dbt run --select dim_date_calendar

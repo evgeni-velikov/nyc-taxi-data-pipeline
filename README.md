@@ -17,14 +17,17 @@ Included services:
 Create a local directory for warehouse data if not exists:
 
 ```bash
+# Clone the repo
+git clone https://github.com/evgeni-velikov/nyc-taxi-data-pipeline.git
+cd nyc-taxi-data-pipeline
+
+# Create warehouse directory
 mkdir warehouse
-```
 
-Build and run
-
-```bash
+# Build the Docker images
 docker compose build
-docker compose run dbt dbt deps
+
+# Run
 docker compose up -d
 ```
 

@@ -22,7 +22,7 @@ with DAG(
         task_id="dim_date_calendar",
         image="data-dbt:latest",
         force_pull=False,
-        command=["bash", "-c", "dbt deps && dbt run --select dim_date_calendar"],
+        command=["bash", "-c", "dbt deps && dbt run --target prod --select dim_date_calendar"],
         docker_url="unix://var/run/docker.sock",
         network_mode="nyc-taxi-data-pipeline",
         working_dir="/dbt",

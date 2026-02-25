@@ -36,7 +36,7 @@ stg_fhv_trip_res AS (
         dispatching_base_num AS dispatching_base_id,
         processing_time,
         partition_date,
-        CURRENT_TIMESTAMP() AS dwh_updated_at
+        {{ dwh_updated_at() }} as dwh_updated_at
     FROM import_fhv_trip_data
 )
 

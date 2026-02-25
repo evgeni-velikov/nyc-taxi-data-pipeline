@@ -4,7 +4,7 @@ profile: nyc_taxi_data_pipeline
 
 model-paths: ["models"]
 #seed-paths: ["seeds"]
-#test-paths: ["tests"]
+test-paths: ["tests"]
 #analysis-paths: ["analysis"]
 macro-paths: ["macros"]
 #snapshot-paths: ["snapshots"]

@@ -21,6 +21,9 @@ Create a local directory for warehouse data if not exists:
 git clone https://github.com/evgeni-velikov/nyc-taxi-data-pipeline.git
 cd nyc-taxi-data-pipeline
 
+# Download drivers
+./scripts/download-drivers.sh
+
 # Create warehouse directory
 mkdir warehouse
 
@@ -29,6 +32,12 @@ docker compose build
 
 # Run
 docker compose up -d
+
+# Wait ~40-50 seconds and check the containers
+docker-compose ps
+
+# Test dbt connection
+docker compose run --rm dbt dbt debug
 ```
 
 This step is required only once.

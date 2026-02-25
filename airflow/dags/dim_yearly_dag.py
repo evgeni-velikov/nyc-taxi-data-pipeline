@@ -1,47 +1,41 @@
-import os
-from datetime import datetime, timedelta
-
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
+from datetime import datetime
 
-
-DBT_VOLUME = os.getenv("DBT_PROJECT_VOLUME", "dbt_project")
-DBT_PROFILES_VOLUME = os.getenv("DBT_PROFILES_VOLUME", "dbt_profiles")
-DOCKER_NETWORK = os.getenv("DOCKER_NETWORK", "nyc-taxi-data-pipeline")
-DBT_TARGET = os.getenv("DBT_TARGET", "prod")
-
-default_args = {
-    "execution_timeout": timedelta(minutes=30),
-    "retries": 2,
-    "retry_delay": timedelta(minutes=5),
-}
 
 with DAG(
     dag_id="dim_yearly_dag",
     start_date=datetime(2024, 1, 1),
-    schedule="@yearly",
+    schedule=None,
     catchup=False,
     tags=["dbt"],
-    default_args=default_args,
-) as dag:
+):
 
     dbt_run = DockerOperator(
         task_id="dim_date_calendar",
         image="data-dbt:latest",
         force_pull=False,
-        command=["bash", "-c", f"dbt deps && dbt run --target {DBT_TARGET} --select dim_date_calendar"],
+        command=["bash", "-c", "dbt deps && dbt run --select dim_date_calendar"],
         docker_url="unix://var/run/docker.sock",
-        network_mode=DOCKER_NETWORK,
+        network_mode="nyc-taxi-data-pipeline",
         working_dir="/dbt",
         auto_remove=True,
         mount_tmp_dir=False,
-        tty=True,
+        tty=True,  # Better logs
         environment={
-            "PYTHONUNBUFFERED": "1",
+            "PYTHONUNBUFFERED": "1",  # realtime dbt logs
         },
         mounts=[
-            Mount(source=DBT_VOLUME, target="/dbt", type="volume"),
-            Mount(source=DBT_PROFILES_VOLUME, target="/root/.dbt", type="volume"),
+            Mount(
+                source="/Users/velikov/Projects/nyc-taxi-data-pipeline/dbt",
+                target="/dbt",
+                type="bind",
+            ),
+            Mount(
+                source="/Users/velikov/Projects/nyc-taxi-data-pipeline/dbt/profiles",
+                target="/root/.dbt",
+                type="bind",
+            ),
         ],
     )

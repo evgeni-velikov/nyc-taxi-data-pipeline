@@ -58,6 +58,8 @@ services:
       - ./warehouse:/warehouse
     environment:
       PYTHONPATH: /app
+      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION: "true"
+      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION_MODE: "nonstrict"
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -76,6 +78,8 @@ services:
     environment:
       SPARK_WORKER_CORES: "8"
       SPARK_WORKER_MEMORY: "6g"
+      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION: "true"
+      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION_MODE: "nonstrict"
       PYTHONPATH: /app
 
   spark-thrift:
@@ -98,6 +102,8 @@ services:
       "
     environment:
       PYTHONPATH: /app
+      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION: "true"
+      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION_MODE: "nonstrict"
     ports:
       - "10000:10000"
     volumes:

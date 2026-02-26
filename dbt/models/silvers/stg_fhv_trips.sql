@@ -1,12 +1,14 @@
 {% set is_unit = var('unit_test', false) %}
 {% set run_incremental = not is_unit and is_incremental() %}
 
-{{ config(
-    materialized = 'view' if is_unit else 'incremental',
-    incremental_strategy='append',
-    partition_by=['partition_date'],
-    tags=['silver', 'staging']
-) }}
+{{
+    config(
+        materialized = 'view' if is_unit else 'incremental',
+        incremental_strategy='append',
+        partition_by=['partition_date'],
+        tags=['silver', 'staging']
+    )
+}}
 
 WITH
 
@@ -18,7 +20,7 @@ get_max_partition_date AS (
 {% endif %}
 
 source_fhv_trip_data AS (
-    SELECT * FROM {{ ref('fhv_trip_data') }}
+    SELECT * FROM {{ safe_ref('fhv_trip_data') }}
 ),
 
 import_fhv_trip_data AS (

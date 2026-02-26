@@ -1,6 +1,9 @@
+{% set is_unit = var('unit_test', false) %}
+{% set run_incremental = not is_unit and is_incremental() %}
+
 {{
     config(
-        materialized='incremental',
+        materialized = 'view' if is_unit else 'incremental',
         partition_by="partition_date",
         cluster_by=["type"],
         tags=['silver', 'staging']
@@ -48,7 +51,7 @@
             {"column": "'ehail'", "alias": "fee_type", "cast": None},
             {"column": "trip_type", "alias": "trip_type", "cast": "STRING"}
         ],
-    }
+    },
 ] %}
 
 
@@ -57,8 +60,8 @@ WITH
 {% for s in taxi_streams %}
 import_{{ s.type }}_trip_data AS (
     SELECT *
-    FROM {{ ref(s.model) }}
-    {% if is_incremental() %}
+    FROM {{ safe_ref(s.model) }}
+    {% if run_incremental %}
     WHERE partition_date > (
         SELECT COALESCE(MAX(partition_date), DATE '2019-01-01')
         FROM {{ this }}

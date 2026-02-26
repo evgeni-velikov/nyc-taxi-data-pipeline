@@ -11,4 +11,4 @@ SELECT
     Affiliated_base_number,
     processing_time,
     partition_date
-FROM {{ source('bronze', 'fhv_trip_data') }}
+FROM {{ safe_source('bronze', 'fhv_trip_data') }}

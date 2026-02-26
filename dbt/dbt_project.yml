@@ -11,12 +11,16 @@ macro-paths: ["macros"]
 
 models:
   nyc_taxi_data_pipeline:
-    +materialized: view
+    +file_format: delta
+
     bronzes:
+      +materialized: view
       schema: bronze
     silvers:
+      +materialized: incremental
       schema: silver
     golds:
+      +materialized: table
       schema: gold
 
 seeds:
@@ -24,3 +28,4 @@ seeds:
     +schema: unit_tests
 vars:
   unit_test: false
+  mock_schema: unit_mock

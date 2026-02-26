@@ -1,6 +1,6 @@
 {{ config(
     tags=['unit','silver', 'stg_fhv_trips', 'basic'],
-    vars={'dwh_updated_at': '2024-01-01 15:00:00'}
+    vars={'dwh_updated_at': '2020-01-01 15:00:00'}
 ) }}
 
 {% call dbt_unit_testing.test('stg_fhv_trip', 'basic logic') %}

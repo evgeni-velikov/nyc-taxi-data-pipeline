@@ -24,7 +24,7 @@ df = df.withColumn("ingestion_date", current_date())
     df.write
     .mode("append")
     .partitionBy("ingestion_date")
-    .saveAsTable("bronze.yellow_trip_data")
+    .saveAsTable("bronze.test_table")
 )
 
 spark.stop()
@@ -32,4 +32,5 @@ spark.stop()
 # docker compose exec spark-master spark-submit /app/src/jobs/bootstrap.py
 # docker compose exec spark-thrift spark-sql
 # docker compose run --rm dbt dbt debug
+# docker compose run --rm dbt dbt build --select tag:stg_fhv_trips
 # docker compose run --rm dbt dbt run --select dim_date_calendar

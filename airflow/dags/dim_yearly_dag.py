@@ -9,6 +9,10 @@ SPARK_IMAGE = os.getenv("SPARK_IMAGE", "nyc-taxi-data-pipeline-spark-master")
 SPARK_MASTER = os.getenv("SPARK_MASTER", "spark://spark-master:7077")
 DOCKER_NETWORK = os.getenv("DOCKER_NETWORK", "nyc-taxi-data-pipeline")
 HOST_PROJECT_PATH= os.getenv("HOST_PROJECT_PATH", "/Users/velikov/Projects/nyc-taxi-data-pipeline")
+environments = {
+    "PYTHONUNBUFFERED": "1",  # realtime dbt logs
+    "DBT_USER": "evgeni",
+}
 
 with DAG(
     dag_id="dim_yearly_dag",
@@ -29,20 +33,10 @@ with DAG(
         auto_remove=True,
         mount_tmp_dir=False,
         tty=True,  # Better logs
-        environment={
-            "PYTHONUNBUFFERED": "1",  # realtime dbt logs
-        },
+        environment=environments,
         mounts=[
-            Mount(
-                source=f"{HOST_PROJECT_PATH}/dbt",
-                target="/dbt",
-                type="bind",
-            ),
-            Mount(
-                source=f"{HOST_PROJECT_PATH}/dbt/profiles",
-                target="/root/.dbt",
-                type="bind",
-            ),
+            Mount(source=f"{HOST_PROJECT_PATH}/dbt", target="/dbt", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/dbt/profiles", target="/root/.dbt", type="bind"),
         ],
     )
 
@@ -60,11 +54,9 @@ with DAG(
             SPARK_MASTER,
             "/app/src/test_two.py",
         ],
+        environment=environments,
         mounts=[
             Mount(source=f"{HOST_PROJECT_PATH}/src", target="/app/src", type="bind"),
             Mount(source=f"{HOST_PROJECT_PATH}/warehouse", target="/warehouse", type="bind"),
         ],
-        environment={
-            "PYTHONUNBUFFERED": "1",
-        },
     )

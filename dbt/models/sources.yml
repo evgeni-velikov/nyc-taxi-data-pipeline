@@ -7,3 +7,9 @@ sources:
       - name: yellow_trip_data
       - name: green_trip_data
       - name: fhv_trip_data
+  - name: raw
+    schema: raw
+    tables:
+      - name: yellow_trip_data
+      - name: green_trip_data
+      - name: fhv_trip_data

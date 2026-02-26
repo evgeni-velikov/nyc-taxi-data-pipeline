@@ -3,7 +3,7 @@ version: 1.0.0
 profile: nyc_taxi_data_pipeline
 
 model-paths: ["models"]
-#seed-paths: ["seeds"]
+seed-paths: ["seeds"]
 test-paths: ["tests"]
 #analysis-paths: ["analysis"]
 macro-paths: ["macros"]
@@ -18,3 +18,9 @@ models:
       schema: silver
     golds:
       schema: gold
+
+seeds:
+  nyc_taxi_data_pipeline:
+    +schema: unit_tests
+vars:
+  unit_test: false

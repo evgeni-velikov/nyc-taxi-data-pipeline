@@ -56,6 +56,8 @@ services:
       - ./data:/data
       - ./src:/app/src
       - ./warehouse:/warehouse
+    environment:
+      PYTHONPATH: /app
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -74,6 +76,7 @@ services:
     environment:
       SPARK_WORKER_CORES: "8"
       SPARK_WORKER_MEMORY: "6g"
+      PYTHONPATH: /app
 
   spark-thrift:
     user: "0:0"
@@ -93,6 +96,8 @@ services:
       done;
       /opt/spark/sbin/start-thriftserver.sh --master spark://spark-master:7077 --conf spark.cores.max=1 --conf spark.executor.cores=1 --conf spark.executor.memory=1g --conf spark.dynamicAllocation.enabled=false && tail -f /dev/null
       "
+    environment:
+      PYTHONPATH: /app
     ports:
       - "10000:10000"
     volumes:
@@ -131,6 +136,8 @@ services:
       - ./dbt/profiles:/root/.dbt
     depends_on:
       - spark-thrift
+    environment:
+      DBT_USER: evgeni
 
   # ---------------------------
   # Airflow metadata DB

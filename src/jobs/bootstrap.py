@@ -27,3 +27,8 @@ def run_bootstrap(spark: SparkSession, config: Config):
             .option("overwriteSchema", "true")
             .saveAsTable(bronze_table)
         )
+
+
+if __name__ == "__main__":
+    from src.common.spark import get_spark_session
+    run_bootstrap(spark=get_spark_session(), config=Config())

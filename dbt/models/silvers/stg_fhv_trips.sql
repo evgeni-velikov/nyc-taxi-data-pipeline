@@ -1,26 +1,30 @@
-{{
-    config(
-        materialized='incremental',
-        incremental_strategy='append',
-        partition_by=['partition_date'],
-        tags=['silver', 'staging']
-    )
-}}
+{% set is_unit = var('unit_test', false) %}
+{% set run_incremental = not is_unit and is_incremental() %}
 
+{{ config(
+    materialized = 'view' if is_unit else 'incremental',
+    incremental_strategy='append',
+    partition_by=['partition_date'],
+    tags=['silver', 'staging']
+) }}
 
 WITH
 
-{% if is_incremental() %}
+{% if run_incremental %}
 get_max_partition_date AS (
     SELECT COALESCE(MAX(partition_date), DATE '1900-01-01') AS max_date
     FROM {{ this }}
 ),
 {% endif %}
 
+source_fhv_trip_data AS (
+    SELECT * FROM {{ ref('fhv_trip_data') }}
+),
+
 import_fhv_trip_data AS (
     SELECT *
-    FROM {{ ref('fhv_trip_data') }}
-    {% if is_incremental() %}
+    FROM source_fhv_trip_data
+    {% if run_incremental %}
     WHERE partition_date > (SELECT max_date FROM get_max_partition_date)
     {% endif %}
 ),

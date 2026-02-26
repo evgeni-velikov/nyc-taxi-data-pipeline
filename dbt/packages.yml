@@ -1,5 +1,5 @@
 packages:
   - package: dbt-labs/dbt_utils
     version: ">=1.1.0"
-  - package: EqualExperts/dbt-unit-testing
-    version: ">=0.4.0"
+  - git: "https://github.com/EqualExperts/dbt-unit-testing.git"
+    revision: v0.4.2

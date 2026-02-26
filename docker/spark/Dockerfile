@@ -32,4 +32,12 @@ COPY docker/spark/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
 COPY docker/spark/hive-site.xml /opt/spark/conf/hive-site.xml
 COPY requirements /tmp/requirements
 RUN mkdir -p /opt/spark/warehouse && chmod -R 777 /opt/spark/warehouse
+
+# Delta Lake jars
+RUN mkdir -p /opt/spark/jars && \
+    curl -L -o /opt/spark/jars/delta-spark.jar \
+    https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/3.1.0/delta-spark_2.12-3.1.0.jar && \
+    curl -L -o /opt/spark/jars/delta-storage.jar \
+    https://repo1.maven.org/maven2/io/delta/delta-storage/3.1.0/delta-storage-3.1.0.jar
+
 RUN pip install --no-cache-dir -r /tmp/requirements/spark.txt

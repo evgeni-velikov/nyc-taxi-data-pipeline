@@ -1,5 +1,6 @@
 {% set is_unit = var('unit_test', false) %}
 {% set run_incremental = not is_unit and is_incremental() %}
+{% set fhv_model = var('fhv_trip_data_model', 'fhv_trip_data') %}
 
 {{
     config(
@@ -19,13 +20,9 @@ get_max_partition_date AS (
 ),
 {% endif %}
 
-source_fhv_trip_data AS (
-    SELECT * FROM {{ ref('fhv_trip_data') }}
-),
-
 import_fhv_trip_data AS (
     SELECT *
-    FROM source_fhv_trip_data
+    FROM {{ ref(fhv_model) }}
     {% if run_incremental %}
     WHERE partition_date > (SELECT max_date FROM get_max_partition_date)
     {% endif %}
@@ -42,7 +39,7 @@ stg_fhv_trip_res AS (
         dispatching_base_num AS dispatching_base_id,
         processing_time,
         partition_date,
-        {{ dwh_updated_at() }} as dwh_updated_at
+        CURRENT_TIMESTAMP as dwh_updated_at
     FROM import_fhv_trip_data
 )
 

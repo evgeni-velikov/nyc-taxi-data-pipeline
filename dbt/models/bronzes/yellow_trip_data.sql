@@ -23,4 +23,4 @@ SELECT
     airport_fee,
     processing_time,
     partition_date
-FROM {{ safe_source('bronze', 'yellow_trip_data') }}
+FROM {{ source('bronze', 'yellow_trip_data') }}

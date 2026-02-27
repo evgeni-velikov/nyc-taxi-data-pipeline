@@ -84,7 +84,7 @@ stg_taxi_trip_res AS (
             {% endif %}
         {% endfor %}
         '{{ s.type }}' AS type,
-        {{ dwh_updated_at() }} as dwh_updated_at
+        CURRENT_TIMESTAMP as dwh_updated_at
     FROM import_{{ s.type }}_trip_data
     {% if not loop.last %}UNION ALL{% endif %}
 {% endfor %}

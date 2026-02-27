@@ -25,7 +25,8 @@ models:
 
 seeds:
   nyc_taxi_data_pipeline:
-    +schema: unit_tests
+    schema: mock_tables
+
 vars:
   unit_test: false
-  mock_schema: unit_tests
+  mock_schema: mock

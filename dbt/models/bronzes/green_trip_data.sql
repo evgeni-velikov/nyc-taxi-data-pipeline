@@ -24,4 +24,4 @@ SELECT
     congestion_surcharge,
     processing_time,
     partition_date
-FROM {{ safe_source('bronze', 'green_trip_data') }}
+FROM {{ source('bronze', 'green_trip_data') }}

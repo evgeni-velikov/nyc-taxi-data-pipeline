@@ -15,27 +15,29 @@ environments = {
 }
 
 with DAG(
-    dag_id="dim_yearly_dag",
+    dag_id="bootstrap_dag",
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False,
-    tags=["dbt", "dim"],
+    tags=["spark"],
 ):
-
-    dbt_run = DockerOperator(
-        task_id="dim_date_calendar",
-        image="data-dbt:latest",
-        force_pull=False,
-        command=["bash", "-c", "dbt deps && dbt run --target prod --select dim_date_calendar"],
+    spark_task = DockerOperator(
+        task_id="bootstrap_data",
+        image=SPARK_IMAGE,
         docker_url="unix://var/run/docker.sock",
-        network_mode="nyc-taxi-data-pipeline",
-        working_dir="/dbt",
-        auto_remove=True,
-        mount_tmp_dir=False,
-        tty=True,  # Better logs
+        network_mode=DOCKER_NETWORK,
+        auto_remove=False,  # keep container for logs/debug
+        mount_tmp_dir=False,  # avoid airflow tmp mount bug
+        tty=False,
+        command=[
+            "spark-submit",
+            "--master",
+            SPARK_MASTER,
+            "/app/src/jobs/bootstrap.py",
+        ],
         environment=environments,
         mounts=[
-            Mount(source=f"{HOST_PROJECT_PATH}/dbt", target="/dbt", type="bind"),
-            Mount(source=f"{HOST_PROJECT_PATH}/dbt/profiles", target="/root/.dbt", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/src", target="/app/src", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/warehouse", target="/warehouse", type="bind"),
         ],
     )

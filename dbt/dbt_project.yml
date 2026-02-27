@@ -28,4 +28,4 @@ seeds:
     +schema: unit_tests
 vars:
   unit_test: false
-  mock_schema: unit_mock
+  mock_schema: unit_tests

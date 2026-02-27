@@ -20,7 +20,7 @@ get_max_partition_date AS (
 {% endif %}
 
 source_fhv_trip_data AS (
-    SELECT * FROM {{ safe_ref('fhv_trip_data') }}
+    SELECT * FROM {{ ref('fhv_trip_data') }}
 ),
 
 import_fhv_trip_data AS (

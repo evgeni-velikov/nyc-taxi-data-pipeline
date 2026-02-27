@@ -1,4 +1,4 @@
 -r base.txt
 
-pyspark
-delta-spark
+pyspark==3.5.1
+delta-spark==3.1.0

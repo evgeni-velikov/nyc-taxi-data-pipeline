@@ -60,7 +60,7 @@ WITH
 {% for s in taxi_streams %}
 import_{{ s.type }}_trip_data AS (
     SELECT *
-    FROM {{ safe_ref(s.model) }}
+    FROM {{ ref(s.model) }}
     {% if run_incremental %}
     WHERE partition_date > (
         SELECT COALESCE(MAX(partition_date), DATE '2019-01-01')

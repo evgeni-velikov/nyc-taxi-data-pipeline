@@ -40,4 +40,4 @@ RUN mkdir -p /opt/spark/jars && \
     curl -L -o /opt/spark/jars/delta-storage.jar \
     https://repo1.maven.org/maven2/io/delta/delta-storage/3.1.0/delta-storage-3.1.0.jar
 
-RUN pip install --no-cache-dir -r /tmp/requirements/spark.txt
+RUN pip install --no-cache-dir --default-timeout=1000 -r /tmp/requirements/spark.txt

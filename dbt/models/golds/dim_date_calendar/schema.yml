@@ -1,0 +1,109 @@
+version: 2
+
+models:
+  - name: dim_date_calendar
+    description: >
+      Calendar date dimension generated using dbt_utils.date_spine.
+      Includes standard calendar attributes and fiscal calendar (April–March).
+
+    config:
+      tags: [ 'dimension' ]
+      contract:
+        enforced: true
+
+    columns:
+      - name: date
+        description: "Calendar date (YYYY-MM-DD)."
+        data_type: date
+        tests:
+          - not_null
+          - unique
+
+      - name: date_key
+        description: "Surrogate key in YYYYMMDD integer format."
+        data_type: int
+        tests:
+          - not_null
+          - unique
+
+      - name: year
+        description: "Calendar year."
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 2010
+              max_value: 2050
+
+      - name: quarter
+        description: "Calendar quarter number (1-4)."
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 4
+
+      - name: month
+        description: "Month number within the year (1-12)."
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 12
+
+      - name: month_name
+        description: "Full month name (e.g., January, February)."
+        data_type: string
+        tests:
+          - not_null
+
+      - name: week_of_year
+        description: "ISO week number within the year."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: day
+        description: "Day of the month (1-31)."
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 31
+
+      - name: day_of_week
+        description: "Day of week as integer (1=Monday, 7=Sunday)."
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 7
+
+      - name: is_weekend
+        description: "Boolean flag indicating whether the date falls on Saturday or Sunday."
+        data_type: boolean
+        tests:
+          - not_null
+
+      - name: fiscal_year
+        description: "Fiscal year assuming fiscal year starts in April."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: fiscal_quarter
+        description: "Fiscal quarter (1-4) based on April–March fiscal calendar."
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 4
+
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "date_key = cast(date_format(date, 'yyyyMMdd') as int)"

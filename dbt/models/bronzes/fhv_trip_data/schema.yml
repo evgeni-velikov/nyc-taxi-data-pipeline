@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: fhv_trip_data_bronze
+    description: >
+      Raw FHV trip data ingested from bronze source layer.
+      This model mirrors the source structure with no business transformations.
+
+    columns:
+      - name: dispatching_base_num
+        description: "Identifier of the dispatching base."
+        tests:
+          - not_null
+
+      - name: pickup_datetime
+        description: "Timestamp when the trip started."
+        tests:
+          - not_null
+
+      - name: dropOff_datetime
+        description: "Timestamp when the trip ended."
+
+      - name: PULocationID
+        description: "Pickup TLC location ID."
+        tests:
+          - not_null
+
+      - name: DOLocationID
+        description: "Dropoff TLC location ID."
+
+      - name: SR_Flag
+        description: "Indicates whether a surcharge was applied (Y/N)."
+
+      - name: Affiliated_base_number
+        description: "Identifier of the affiliated base."
+
+      - name: processing_time
+        description: "Timestamp when the trip record was processed."
+        tests:
+          - not_null
+
+      - name: partition_date
+        description: "Partition date used for data ingestion."
+        tests:
+          - not_null

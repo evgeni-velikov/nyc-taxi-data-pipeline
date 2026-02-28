@@ -1,4 +1,4 @@
-{{ config(materialized='view', tags=['bronze']) }}
+{{ config(materialized='view') }}
 
 
 SELECT

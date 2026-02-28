@@ -1,0 +1,57 @@
+unit_tests:
+  - name: test_basic_stg_fhv_trip_res
+    description: "Validate column renaming, casting and mapping from fhv_trip_data."
+    model: stg_fhv_trips
+    given:
+      - input: ref('fhv_trip_data')
+        rows:
+          - {
+            dispatching_base_num: "B001", pickup_datetime: "2020-01-01 00:00:00",
+            dropOff_datetime: "2020-01-01 00:25:00", PULocationID: 1,
+            DOLocationID: 2, SR_Flag: "N", Affiliated_base_number: "B001",
+            processing_time: "2020-02-01 00:03:00", partition_date: "2020-02-01"
+          }
+          - {
+            dispatching_base_num: "B002", pickup_datetime: "2020-01-01 01:10:00",
+            dropOff_datetime: "2020-01-01 01:45:00", PULocationID: 10,
+            DOLocationID: 20, SR_Flag: "Y", Affiliated_base_number: "B002",
+            processing_time: "2020-02-01 00:04:00", partition_date: "2020-02-01"
+          }
+          - {
+            dispatching_base_num: "B003", pickup_datetime: "2020-01-02 08:05:00",
+            dropOff_datetime: "2020-01-02 08:30:00", PULocationID: 45,
+            DOLocationID: 67, SR_Flag: "N", Affiliated_base_number: "B003",
+            processing_time: "2020-02-02 00:01:00", partition_date: "2020-02-02"
+          }
+          - {
+            dispatching_base_num: "B004", pickup_datetime: "2020-01-03 14:15:00",
+            dropOff_datetime: "2020-01-03 14:40:00", PULocationID: 12,
+            DOLocationID: 90, SR_Flag: "Y", Affiliated_base_number: "B004",
+            processing_time: "2020-02-03 00:02:00", partition_date: "2020-02-03"
+          }
+    expect:
+      rows:
+        - {
+          pickup_datetime: "2020-01-01 00:00:00", dropoff_datetime: "2020-01-01 00:25:00",
+          pickup_location_id: 1, dropoff_location_id: 2,
+          surcharge_flag: "N", affiliated_base_number: "B001", dispatching_base_id: "B001",
+          processing_time: "2020-02-01 00:03:00", partition_date: "2020-02-01"
+        }
+        - {
+          pickup_datetime: "2020-01-01 01:10:00", dropoff_datetime: "2020-01-01 01:45:00",
+          pickup_location_id: 10,  dropoff_location_id: 20,
+          surcharge_flag: "Y",  affiliated_base_number: "B002", dispatching_base_id: "B002",
+          processing_time: "2020-02-01 00:04:00", partition_date: "2020-02-01"
+        }
+        - {
+          pickup_datetime: "2020-01-02 08:05:00", dropoff_datetime: "2020-01-02 08:30:00",
+          pickup_location_id: 45, dropoff_location_id: 67,
+          surcharge_flag: "N", affiliated_base_number: "B003", dispatching_base_id: "B003",
+          processing_time: "2020-02-02 00:01:00", partition_date: "2020-02-02"
+        }
+        - {
+          pickup_datetime: "2020-01-03 14:15:00", dropoff_datetime: "2020-01-03 14:40:00",
+          pickup_location_id: 12, dropoff_location_id: 90,
+          surcharge_flag: "Y", affiliated_base_number: "B004", dispatching_base_id: "B004",
+          processing_time: "2020-02-03 00:02:00", partition_date: "2020-02-03"
+        }

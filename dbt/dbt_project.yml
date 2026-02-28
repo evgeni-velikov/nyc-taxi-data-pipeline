@@ -3,8 +3,8 @@ version: 1.0.0
 profile: nyc_taxi_data_pipeline
 
 model-paths: ["models"]
-seed-paths: ["seeds"]
-test-paths: ["tests"]
+#seed-paths: ["seeds"]
+#test-paths: ["tests"]
 #analysis-paths: ["analysis"]
 macro-paths: ["macros"]
 #snapshot-paths: ["snapshots"]
@@ -14,12 +14,15 @@ models:
     +file_format: delta
 
     bronzes:
+      +tags: ['bronze']
       +materialized: view
       schema: bronze
     silvers:
+      +tags: ['silver']
       +materialized: incremental
       schema: silver
     golds:
+      +tags: ['gold']
       +materialized: table
       schema: gold
 

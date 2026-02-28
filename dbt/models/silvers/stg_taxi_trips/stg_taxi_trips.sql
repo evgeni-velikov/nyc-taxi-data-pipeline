@@ -6,7 +6,7 @@
         materialized = 'view' if is_unit else 'incremental',
         partition_by="partition_date",
         cluster_by=["type"],
-        tags=['silver', 'staging']
+        tags=['staging']
     )
 }}
 

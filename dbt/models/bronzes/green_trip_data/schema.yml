@@ -1,0 +1,84 @@
+version: 2
+
+models:
+  - name: green_trip_data_bronze
+    description: >
+      Raw Green Taxi trip data ingested from bronze source layer.
+      Mirrors the source schema without business transformations.
+
+    columns:
+      - name: VendorID
+        description: "Identifier of the data vendor."
+        tests:
+          - not_null
+
+      - name: lpep_pickup_datetime
+        description: "Timestamp when the trip started."
+        tests:
+          - not_null
+
+      - name: lpep_dropoff_datetime
+        description: "Timestamp when the trip ended."
+
+      - name: store_and_fwd_flag
+        description: "Flag indicating whether the trip record was stored before being sent to the vendor (Y/N)."
+
+      - name: RatecodeID
+        description: "Rate code applied to the trip."
+
+      - name: PULocationID
+        description: "Pickup TLC location ID."
+        tests:
+          - not_null
+
+      - name: DOLocationID
+        description: "Dropoff TLC location ID."
+
+      - name: passenger_count
+        description: "Number of passengers in the vehicle."
+
+      - name: trip_distance
+        description: "Trip distance in miles."
+
+      - name: fare_amount
+        description: "Base fare amount."
+
+      - name: extra
+        description: "Additional charges (e.g., night surcharge)."
+
+      - name: mta_tax
+        description: "Metropolitan Transportation Authority tax."
+
+      - name: tip_amount
+        description: "Tip amount paid by the passenger."
+
+      - name: tolls_amount
+        description: "Total tolls paid during the trip."
+
+      - name: ehail_fee
+        description: "E-hail fee applied to the trip."
+
+      - name: improvement_surcharge
+        description: "Improvement surcharge applied to the trip."
+
+      - name: total_amount
+        description: "Total amount charged to the passenger."
+
+      - name: payment_type
+        description: "Payment method used for the trip."
+
+      - name: trip_type
+        description: "Type of trip (e.g., street hail or dispatch)."
+
+      - name: congestion_surcharge
+        description: "Congestion surcharge applied in designated zones."
+
+      - name: processing_time
+        description: "Timestamp when the trip record was processed."
+        tests:
+          - not_null
+
+      - name: partition_date
+        description: "Partition date used for ingestion."
+        tests:
+          - not_null

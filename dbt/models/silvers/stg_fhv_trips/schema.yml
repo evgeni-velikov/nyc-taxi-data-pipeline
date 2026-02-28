@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: stg_fhv_trips
+    config:
+      tags: [ 'staging' ]
+
+    columns:
+      - name: pickup_datetime
+        description: "The date and time when the taxi picked up the passenger"
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: "The location ID of the pickup location"
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: dropoff_datetime
+        description: "The date and time when the taxi drove the passenger off"
+        data_type: timestamp
+
+      - name: dropoff_location_id
+        description: "The location ID of the dropoff location"
+        data_type: bigint
+
+      - name: surcharge_flag
+        description: "Indicates whether the taxi was charged for surcharge"
+        data_type: string
+
+      - name: affiliated_base_number
+        description: "The affiliated base number of the taxi"
+        data_type: string
+
+      - name: dispatching_base_id
+        description: "The base ID of the dispatching base"
+        data_type: string
+        tests:
+          - not_null
+
+      - name: processing_time
+        description: "The time it took to process the trip"
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: partition_date
+        description: "The month and year of the parquet file"
+        data_type: date
+        tests:
+          - not_null
+
+      - name: dwh_updated_at
+        description: "The date and time when the data was last updated in the DWH"
+        data_type: timestamp

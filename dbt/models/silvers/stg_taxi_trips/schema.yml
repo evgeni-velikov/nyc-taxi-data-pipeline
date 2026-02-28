@@ -1,0 +1,133 @@
+version: 2
+
+models:
+  - name: stg_taxi_trip
+    description: >
+      Unified staging model combining Yellow and Green taxi trips
+      into a standardized schema. Supports incremental loading by partition_date
+      and distinguishes taxi streams via the 'type' column.
+
+    config:
+      tags: [ 'staging' ]
+
+    columns:
+
+      - name: vendor_id
+        description: "Identifier of the taxi data vendor."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: partition_date
+        description: "Partition date used for incremental loading."
+        data_type: date
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: "Pickup TLC location ID."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: dropoff_location_id
+        description: "Dropoff TLC location ID."
+        data_type: bigint
+
+      - name: rate_code_id
+        description: "Rate code applied to the trip."
+        data_type: string
+
+      - name: store_and_fwd_flag
+        description: "Flag indicating whether the trip record was stored before being sent."
+        data_type: string
+
+      - name: payment_type
+        description: "Payment method used for the trip."
+        data_type: int
+
+      - name: improvement_surcharge
+        description: "Improvement surcharge applied to the trip."
+        data_type: double
+
+      - name: congestion_surcharge
+        description: "Congestion surcharge applied in designated zones."
+        data_type: double
+
+      - name: passenger_count
+        description: "Number of passengers in the vehicle."
+        data_type: int
+
+      - name: trip_distance
+        description: "Trip distance in miles."
+        data_type: double
+
+      - name: mta_tax
+        description: "Metropolitan Transportation Authority tax."
+        data_type: double
+
+      - name: extra
+        description: "Additional charges such as night surcharge."
+        data_type: double
+
+      - name: fare_amount
+        description: "Base fare amount."
+        data_type: double
+
+      - name: tip_amount
+        description: "Tip amount paid by the passenger."
+        data_type: double
+
+      - name: tolls_amount
+        description: "Total tolls paid during the trip."
+        data_type: double
+
+      - name: total_amount
+        description: "Total amount charged to the passenger."
+        data_type: double
+
+      - name: pickup_datetime
+        description: "Timestamp when the trip started."
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: dropoff_datetime
+        description: "Timestamp when the trip ended."
+        data_type: timestamp
+
+      - name: total_fee
+        description: "Stream-specific fee (airport fee for yellow, ehail fee for green)."
+        data_type: double
+
+      - name: fee_type
+        description: "Type of fee (airport or ehail)."
+        data_type: string
+
+      - name: trip_type
+        description: "Trip type (green only; null for yellow)."
+        data_type: string
+
+      - name: type
+        description: "Taxi stream type (yellow or green)."
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['yellow', 'green']
+
+      - name: dwh_updated_at
+        description: "Timestamp when the record was processed in the DWH."
+        data_type: timestamp
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - pickup_datetime
+            - dropoff_datetime
+            - pickup_location_id
+            - dropoff_location_id
+            - vendor_id
+            - type

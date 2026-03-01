@@ -1,0 +1,143 @@
+version: 2
+
+models:
+  - name: taxi_trips_unpivot_res
+    description: >
+      Hourly aggregated taxi trips fact model in long (unpivoted) format.
+      Each row represents a single KPI metric (metric_name, metric_value)
+      for a specific combination of vendor, pickup/dropoff locations,
+      pickup/dropoff hour, taxi type, payment type, rate code and trip type.
+      Supports incremental merge loading partitioned by partition_date,
+      taxi_type and metric_name.
+
+    config:
+      tags: ['fact', 'hourly', 'unpivot']
+
+    columns:
+
+      # =========================
+      # Business Dimensions (Grain)
+      # =========================
+
+      - name: vendor_id
+        description: "Identifier of the taxi data vendor."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: "Pickup TLC location ID."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: dropoff_location_id
+        description: "Dropoff TLC location ID."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: date_hour_pickup_datetime
+        description: "Pickup timestamp truncated to hour level."
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: date_hour_dropoff_datetime
+        description: "Dropoff timestamp truncated to hour level."
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: "Taxi stream type (yellow or green)."
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['yellow', 'green']
+
+      - name: payment_type
+        description: "Payment method used for the trip."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: rate_code_id
+        description: "Rate code applied to the trip."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: trip_type
+        description: "Trip type (street-hail or dispatch; null possible for yellow taxi depending on source logic)."
+        data_type: int
+
+      # =========================
+      # Partition Column
+      # =========================
+
+      - name: partition_date
+        description: "Partition date used for incremental loading (max partition_date from aggregated source rows)."
+        data_type: date
+        tests:
+          - not_null
+
+      # =========================
+      # Metric Layer (Unpivot)
+      # =========================
+
+      - name: metric_name
+        description: >
+          Name of the KPI metric. Possible values:
+          total_improvement_surcharge, total_congestion_surcharge,
+          total_passenger_count, avg_trip_distance, mta_tax, extra,
+          fare_amount, tip_amount, tolls_amount, total_amount,
+          total_airport_fee, total_ehail_fee.
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - total_improvement_surcharge
+                - total_congestion_surcharge
+                - total_passenger_count
+                - avg_trip_distance
+                - mta_tax
+                - extra
+                - fare_amount
+                - tip_amount
+                - tolls_amount
+                - total_amount
+                - total_airport_fee
+                - total_ehail_fee
+
+      - name: metric_value
+        description: "Aggregated metric value corresponding to metric_name."
+        data_type: double
+        tests:
+          - not_null
+
+      # =========================
+      # Technical Column
+      # =========================
+
+      - name: dwh_updated_at
+        description: "Timestamp when the record was processed in the DWH."
+        data_type: timestamp
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - vendor_id
+            - pickup_location_id
+            - dropoff_location_id
+            - date_hour_pickup_datetime
+            - date_hour_dropoff_datetime
+            - taxi_type
+            - payment_type
+            - rate_code_id
+            - trip_type
+            - metric_name

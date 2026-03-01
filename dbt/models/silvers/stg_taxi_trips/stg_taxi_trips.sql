@@ -4,8 +4,7 @@
 {{
     config(
         materialized = 'view' if is_unit else 'incremental',
-        partition_by="partition_date",
-        cluster_by=["type"],
+        partition_by="partition_date, type",
         tags=['staging']
     )
 }}

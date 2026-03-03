@@ -1,41 +1,27 @@
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from docker.types import Mount
-
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
 
-SPARK_IMAGE = os.getenv("SPARK_IMAGE", "nyc-taxi-data-pipeline-spark-master")
-SPARK_MASTER = os.getenv("SPARK_MASTER", "spark://spark-master:7077")
-DOCKER_NETWORK = os.getenv("DOCKER_NETWORK", "nyc-taxi-data-pipeline")
-HOST_PROJECT_PATH= os.getenv("HOST_PROJECT_PATH", "/Users/velikov/Projects/nyc-taxi-data-pipeline")
-environments = {
-    "PYTHONUNBUFFERED": "1",  # realtime dbt logs
-    "DBT_USER": "evgeni",
-}
+from ..common.constants import COMMON_DOCKER_ARGS, HOST_PROJECT_PATH
+
 
 with DAG(
     dag_id="dim_yearly_dag",
     start_date=datetime(2024, 1, 1),
-    schedule=None,
+    schedule="@yearly",
     catchup=False,
     tags=["dbt", "dim"],
-):
+) as dim_yearly_dag:
 
     dbt_run = DockerOperator(
         task_id="dim_date_calendar",
         image="data-dbt:latest",
-        force_pull=False,
         command=["bash", "-c", "dbt deps && dbt run --target prod --select dim_date_calendar"],
-        docker_url="unix://var/run/docker.sock",
-        network_mode="nyc-taxi-data-pipeline",
         working_dir="/dbt",
-        auto_remove=True,
-        mount_tmp_dir=False,
-        tty=True,  # Better logs
-        environment=environments,
         mounts=[
             Mount(source=f"{HOST_PROJECT_PATH}/dbt", target="/dbt", type="bind"),
             Mount(source=f"{HOST_PROJECT_PATH}/dbt/profiles", target="/root/.dbt", type="bind"),
         ],
+        **COMMON_DOCKER_ARGS,
     )

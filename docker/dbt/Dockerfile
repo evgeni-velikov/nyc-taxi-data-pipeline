@@ -6,3 +6,8 @@ COPY requirements /tmp/requirements
 RUN pip install --no-cache-dir -r /tmp/requirements/dbt.txt
 
 WORKDIR /dbt
+
+COPY dbt/packages.yml ./packages.yml
+COPY dbt/dbt_project.yml ./dbt_project.yml
+
+RUN dbt deps

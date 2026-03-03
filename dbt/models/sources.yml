@@ -5,8 +5,21 @@ sources:
     schema: bronze
     tables:
       - name: yellow_trip_data
+        loaded_at_field: processing_time
+        freshness:
+          warn_after: { count: 2, period: day }
+          error_after: { count: 3, period: day }
       - name: green_trip_data
+        loaded_at_field: processing_time
+        freshness:
+          warn_after: { count: 2, period: day }
+          error_after: { count: 3, period: day }
       - name: fhv_trip_data
+        loaded_at_field: processing_time
+        freshness:
+          warn_after: { count: 2, period: day }
+          error_after: { count: 3, period: day }
+
   - name: mock
     schema: mock_tables
     tables:

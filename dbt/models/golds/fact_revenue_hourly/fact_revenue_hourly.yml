@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  - name: fact_revenue_hourly
+    description: >
+      Hourly aggregated revenue fact table.
+      Grain: one row per vendor_id, pickup_location_id, dropoff_location_id,
+      date_hour_pickup_datetime, taxi_type, payment_type.
+      Contains aggregated trip counts and revenue-related financial metrics.
+
+    config:
+      tags: ["fact", "revenue", "hourly", "finance"]
+
+    columns:
+
+      - name: vendor_id
+        description: "Identifier of the taxi vendor providing the service."
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: "Location identifier where the trip started."
+        tests:
+          - not_null
+
+      - name: dropoff_location_id
+        description: "Location identifier where the trip ended."
+        tests:
+          - not_null
+
+      - name: date_hour_pickup_datetime
+        description: >
+          Timestamp truncated to the hour representing the pickup time.
+          Used as the primary time dimension for revenue aggregation.
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: "Type of taxi service (e.g., yellow, green)."
+        tests:
+          - not_null
+
+      - name: payment_type
+        description: "Method of payment used for the trip (e.g., card, cash)."
+        tests:
+          - not_null
+
+      - name: total_trips
+        description: >
+          Total number of trips within the defined hourly grain.
+          Calculated as COUNT(*) from source trips.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "total_trips >= 0"
+
+      - name: fare_amount
+        description: >
+          Total base fare amount aggregated for the hour.
+          Does not include tips, tolls, or additional surcharges unless defined in source.
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "fare_amount >= 0"
+
+      - name: tip_amount
+        description: "Total tip amount aggregated for the hour."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "tip_amount >= 0"
+
+      - name: tolls_amount
+        description: "Total toll charges aggregated for the hour."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "tolls_amount >= 0"
+
+      - name: total_amount
+        description: >
+          Total trip amount aggregated for the hour.
+          Business definition must confirm whether this includes
+          fare, tips, tolls, and surcharges to prevent double counting downstream.
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "total_amount >= 0"
+
+      - name: total_airport_fee
+        description: "Total airport-related fees aggregated for the hour."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "total_airport_fee >= 0"
+
+      - name: total_ehail_fee
+        description: "Total e-hail related fees aggregated for the hour."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "total_ehail_fee >= 0"
+
+      - name: max_dwh_updated_at
+        description: >
+          Maximum source update timestamp for records contributing
+          to the aggregated row. Used for incremental processing control.
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - vendor_id
+            - pickup_location_id
+            - dropoff_location_id
+            - date_hour_pickup_datetime
+            - taxi_type
+            - payment_type

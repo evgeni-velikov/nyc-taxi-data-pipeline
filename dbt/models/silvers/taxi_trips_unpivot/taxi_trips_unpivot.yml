@@ -111,6 +111,7 @@ models:
                 - total_amount
                 - total_airport_fee
                 - total_ehail_fee
+                - total_trips
 
       - name: metric_value
         description: "Aggregated metric value corresponding to metric_name."

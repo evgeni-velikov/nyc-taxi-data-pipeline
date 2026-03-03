@@ -1,9 +1,5 @@
-{% set is_unit = var('unit_test', false) %}
-{% set run_incremental = not is_unit and is_incremental() %}
-
 {{
     config(
-        materialized = 'view' if is_unit else 'incremental',
         unique_key = [
             'vendor_id', 'pickup_location_id', 'dropoff_location_id',
             'date_hour_pickup_datetime', 'date_hour_dropoff_datetime',
@@ -19,7 +15,7 @@ WITH
 
 -- Import
 
-{% if run_incremental %}
+{% if is_incremental() %}
 get_max_partition_date AS (
     SELECT COALESCE(MAX(partition_date), DATE '1900-01-01') AS max_partition_date
     FROM {{ this }}
@@ -31,7 +27,7 @@ import_stg_taxi_trips AS (
         DATE_TRUNC('HOUR', dropoff_datetime) AS date_hour_dropoff_datetime
     FROM {{ ref('stg_taxi_trips') }}
     WHERE 1=1
-    {% if run_incremental %}
+    {% if is_incremental() %}
     -- Reprocessing buffer (1 day)
     AND partition_date >= date_sub(
         (SELECT max_partition_date FROM max_processed_partition),

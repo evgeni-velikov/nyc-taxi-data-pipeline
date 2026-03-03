@@ -1,9 +1,5 @@
-{% set is_unit = var('unit_test', false) %}
-{% set run_incremental = not is_unit and is_incremental() %}
-
 {{
     config(
-        materialized = 'view' if is_unit else 'incremental',
         partition_by="partition_date, type",
         tags=['staging']
     )
@@ -60,7 +56,7 @@ WITH
 import_{{ s.type }}_trip_data AS (
     SELECT *
     FROM {{ ref(s.model) }}
-    {% if run_incremental %}
+    {% if is_incremental() %}
     WHERE partition_date > (
         SELECT COALESCE(MAX(partition_date), DATE '2019-01-01')
         FROM {{ this }}

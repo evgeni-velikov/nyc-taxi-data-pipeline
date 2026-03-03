@@ -12,6 +12,7 @@ macro-paths: ["macros"]
 models:
   nyc_taxi_data_pipeline:
     +file_format: delta
+    +materialized: "{{ 'view' if var('unit_test', false) else 'incremental' }}"
 
     bronzes:
       +tags: ['bronze']
@@ -19,11 +20,9 @@ models:
       schema: bronze
     silvers:
       +tags: ['silver']
-      +materialized: incremental
       schema: silver
     golds:
       +tags: ['gold']
-      +materialized: table
       schema: gold
 
 seeds:

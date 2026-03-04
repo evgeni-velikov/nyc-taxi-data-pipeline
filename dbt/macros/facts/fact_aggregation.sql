@@ -13,11 +13,10 @@
     import_source AS (
         SELECT *
         FROM {{ ref('taxi_trips_unpivot') }}
-        WHERE 1=1
+        WHERE metric_name IN ({{ "'" + metrics | join("', '") + "'" }})
         {% if is_incremental() %}
-            AND dwh_updated_at > (SELECT max_dwh_updated_at FROM get_max_dwh_updated_at)
+        AND dwh_updated_at > (SELECT max_dwh_updated_at FROM get_max_dwh_updated_at)
         {% endif %}
-            AND metric_name IN {{ metrics }}
     ),
 
     final_agg AS (

@@ -1,0 +1,3 @@
+pickup_datetime,dropoff_datetime,pickup_location_id,dropoff_location_id,surcharge_flag,affiliated_base_number,dispatching_base_id,processing_time,partition_date,dwh_updated_at
+2020-01-01 00:00:00,2020-01-01 00:25:00,1,2,N,B001,B001,2020-02-01 00:03:00,2020-02-01,2020-02-01 00:00:00
+2020-01-01 01:10:00,2020-01-01 01:45:00,10,20,Y,B002,B002,2020-02-01 00:04:00,2020-02-01,2020-02-01 00:00:00

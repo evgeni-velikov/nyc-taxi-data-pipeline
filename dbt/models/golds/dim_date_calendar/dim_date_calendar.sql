@@ -15,20 +15,17 @@ dim_date_spine AS (
 compute_calendar AS (
     SELECT
         CAST(date_day AS date) AS date,
-
         CAST(date_format(date_day, 'yyyyMMdd') AS INT) AS date_key,
-
         YEAR(date_day) AS year,
         QUARTER(date_day) AS quarter,
         MONTH(date_day) AS month,
         date_format(date_day, 'MMMM') AS month_name,
         WEEKOFYEAR(date_day) AS week_of_year,
         DAY(date_day) AS day,
-        CAST(date_format(date_day, 'u') AS INT) AS day_of_week,
 
-        CASE WHEN date_format(date_day, 'u') IN ('6','7') THEN true ELSE false END AS is_weekend,
+        DAYOFWEEK(date_day) AS day_of_week,
+        CASE WHEN DAYOFWEEK(date_day) IN (1, 7) THEN true ELSE false END AS is_weekend,
 
-        -- Fiscal year (April start)
         CASE
             WHEN MONTH(date_day) >= 4 THEN YEAR(date_day)
             ELSE YEAR(date_day) - 1

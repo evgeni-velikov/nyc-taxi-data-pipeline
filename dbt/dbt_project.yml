@@ -4,7 +4,7 @@ profile: nyc_taxi_data_pipeline
 
 model-paths: ["models"]
 #seed-paths: ["seeds"]
-#test-paths: ["tests"]
+test-paths: ["tests"]
 #analysis-paths: ["analysis"]
 macro-paths: ["macros"]
 #snapshot-paths: ["snapshots"]
@@ -12,7 +12,6 @@ macro-paths: ["macros"]
 models:
   nyc_taxi_data_pipeline:
     +file_format: delta
-    +materialized: "{{ 'view' if var('unit_test', false) else 'incremental' }}"
 
     bronzes:
       +tags: ['bronze']
@@ -20,6 +19,7 @@ models:
       schema: bronze
     silvers:
       +tags: ['silver']
+      +materialized: incremental
       schema: silver
     golds:
       +tags: ['gold']
@@ -32,3 +32,7 @@ seeds:
 vars:
   unit_test: false
   mock_schema: mock
+
+dispatch:
+  - macro_namespace: dbt
+    search_order: ['nyc_taxi_data_pipeline', 'dbt']

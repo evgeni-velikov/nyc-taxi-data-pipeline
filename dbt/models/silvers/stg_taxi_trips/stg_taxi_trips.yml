@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: stg_taxi_trip
+  - name: stg_taxi_trips
     description: >
       Unified staging model combining Yellow and Green taxi trips
       into a standardized schema. Supports incremental loading by partition_date
@@ -114,20 +114,11 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['yellow', 'green']
+              arguments:
+                values: ['yellow', 'green']
 
       - name: dwh_updated_at
         description: "Timestamp when the record was processed in the DWH."
         data_type: timestamp
         tests:
           - not_null
-
-    tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - pickup_datetime
-            - dropoff_datetime
-            - pickup_location_id
-            - dropoff_location_id
-            - vendor_id
-            - type

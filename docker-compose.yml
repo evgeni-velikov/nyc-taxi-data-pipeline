@@ -5,11 +5,8 @@ services:
   # ---------------------------
   mysql:
     image: mysql:8
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: metastore
-      MYSQL_USER: hive
-      MYSQL_PASSWORD: hive
+    env_file:
+      - .env
     ports:
       - "3306:3306"
     volumes:
@@ -29,8 +26,8 @@ services:
         export HIVE_CONF_DIR=/opt/hive/conf
         /opt/hive/bin/schematool -dbType mysql -validate || /opt/hive/bin/schematool -dbType mysql -initSchema
         /opt/hive/bin/hive --service metastore
-    environment:
-      SERVICE_NAME: metastore
+    env_file:
+      - .env
     depends_on:
       mysql:
         condition: service_started
@@ -56,10 +53,8 @@ services:
       - ./data:/data
       - ./src:/app/src
       - ./warehouse:/warehouse
-    environment:
-      PYTHONPATH: /app
-      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION: "true"
-      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION_MODE: "nonstrict"
+    env_file:
+      - .env
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -75,12 +70,8 @@ services:
       - ./warehouse:/warehouse
     depends_on:
       - spark-master
-    environment:
-      SPARK_WORKER_CORES: "8"
-      SPARK_WORKER_MEMORY: "6g"
-      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION: "true"
-      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION_MODE: "nonstrict"
-      PYTHONPATH: /app
+    env_file:
+      - .env
 
   spark-thrift:
     user: "0:0"
@@ -100,10 +91,8 @@ services:
       done;
       /opt/spark/sbin/start-thriftserver.sh --master spark://spark-master:7077 --conf spark.cores.max=1 --conf spark.executor.cores=1 --conf spark.executor.memory=1g --conf spark.dynamicAllocation.enabled=false && tail -f /dev/null
       "
-    environment:
-      PYTHONPATH: /app
-      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION: "true"
-      SPARK_SQL_HIVE_EXEC_DYNAMIC_PARTITION_MODE: "nonstrict"
+    env_file:
+      - .env
     ports:
       - "10000:10000"
     volumes:
@@ -113,21 +102,6 @@ services:
         condition: service_started
       hive-metastore:
         condition: service_healthy
-
-  # ---------------------------
-  # MinIO (S3 local)
-  # ---------------------------
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - ./minio:/data
 
   # ---------------------------
   # dbt
@@ -142,18 +116,16 @@ services:
       - ./dbt/profiles:/root/.dbt
     depends_on:
       - spark-thrift
-    environment:
-      DBT_USER: evgeni
+    env_file:
+      - .env
 
   # ---------------------------
   # Airflow metadata DB
   # ---------------------------
   airflow-postgres:
     image: postgres:15
-    environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
+    env_file:
+      - .env
 
   # ---------------------------
   # Airflow webserver
@@ -164,8 +136,8 @@ services:
       dockerfile: docker/airflow/Dockerfile
     depends_on:
       - airflow-postgres
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    env_file:
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
@@ -182,9 +154,8 @@ services:
       context: .
       dockerfile: docker/airflow/Dockerfile
     command: webserver
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__WEBSERVER__SECRET_KEY: super-secret-airflow-key
+    env_file:
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
@@ -211,9 +182,8 @@ services:
       context: .
       dockerfile: docker/airflow/Dockerfile
     command: scheduler
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__WEBSERVER__SECRET_KEY: super-secret-airflow-key
+    env_file:
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
@@ -234,9 +204,8 @@ services:
       context: .
       dockerfile: docker/airflow/Dockerfile
     command: triggerer
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__WEBSERVER__SECRET_KEY: super-secret-airflow-key
+    env_file:
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock

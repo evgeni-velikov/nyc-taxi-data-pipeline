@@ -3,7 +3,7 @@
 ] %}
 {% set unique_keys = [
     'vendor_id', 'pickup_location_id', 'dropoff_location_id',
-    'date_hour_pickup_datetime', 'date_hour_dropoff_datetime', 'taxi_type',
+    'date_hour_pickup_datetime', 'taxi_type',
 ] %}
 
 {{
@@ -37,21 +37,24 @@ import_stg_fhv_trips AS (
     )
 }},
 
-union_models AS (
+
+-- Logic
+
+fact_zone_activity_hourly_res AS (
     SELECT
         dispatching_base_id AS operator_id,
         'dispatching_base' AS operator_type,
         pickup_location_id,
         dropoff_location_id,
-        date_hour_pickup_datetime,
-        date_hour_dropoff_datetime,
+        DATE_TRUNC('HOUR', pickup_datetime) AS date_hour_pickup_datetime,
         'fhv' AS taxi_type,
-        total_trips,
+        COUNT(*) AS total_trips,
         BIGINT(NULL) AS total_passenger_count,
         DOUBLE(NULL) AS total_trip_distance,
         MAX(dwh_updated_at) AS max_dwh_updated_at,
         CURRENT_TIMESTAMP() AS dwh_updated_at
     FROM import_stg_fhv_trips
+    GROUP BY 1,3,4,5,6
     UNION ALL
     SELECT
         vendor_id AS operator_id,
@@ -59,14 +62,16 @@ union_models AS (
         pickup_location_id,
         dropoff_location_id,
         date_hour_pickup_datetime,
-        date_hour_dropoff_datetime,
         taxi_type,
         total_trips,
         total_passenger_count,
         total_trip_distance,
-        MAX(dwh_updated_at) AS max_dwh_updated_at,
-        CURRENT_TIMESTAMP() AS dwh_updated_at
-    FROM fact_zone_activity_hourly
+        max_dwh_updated_at,
+        dwh_updated_at
+    FROM final_agg
 )
 
-SELECT * FROM union_models
+
+-- Result
+
+SELECT * FROM fact_zone_activity_hourly_res

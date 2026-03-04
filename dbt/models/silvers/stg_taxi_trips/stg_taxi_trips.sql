@@ -1,5 +1,7 @@
 {{
     config(
+        materialized='incremental',
+        incremental_strategy='append',
         partition_by="partition_date, type",
         tags=['staging']
     )
@@ -28,17 +30,25 @@
     {
         "model": "yellow_trip_data",
         "type": "yellow",
+        "required_columns": [
+            "VendorID", "tpep_pickup_datetime", "RatecodeID",
+            "PULocationID", "DOLocationID", "payment_type",
+        ],
         "unique_columns": [
             {"column": "tpep_pickup_datetime", "alias": "pickup_datetime", "cast": None},
             {"column": "tpep_dropoff_datetime", "alias": "dropoff_datetime", "cast": None},
             {"column": "airport_fee", "alias": "total_fee", "cast": "DOUBLE"},
             {"column": "'airport'", "alias": "fee_type", "cast": None},
-            {"column": "STRING(NULL)", "alias": "trip_type", "cast": None},
+            {"column": "'unknown'", "alias": "trip_type", "cast": None},
         ],
     },
     {
         "model": "green_trip_data",
         "type": "green",
+        "required_columns": [
+            "VendorID", "lpep_pickup_datetime", "RatecodeID",
+            "PULocationID", "DOLocationID", "payment_type", "trip_type",
+        ],
         "unique_columns": [
             {"column": "lpep_pickup_datetime", "alias": "pickup_datetime", "cast": None},
             {"column": "lpep_dropoff_datetime", "alias": "dropoff_datetime", "cast": None},
@@ -52,19 +62,28 @@
 
 WITH
 
+-- Import
+
 {% for s in taxi_streams %}
 import_{{ s.type }}_trip_data AS (
     SELECT *
     FROM {{ ref(s.model) }}
+    WHERE 1=1
     {% if is_incremental() %}
-    WHERE partition_date > (
+    AND partition_date > (
         SELECT COALESCE(MAX(partition_date), DATE '2019-01-01')
         FROM {{ this }}
         WHERE type = '{{ s.type }}'
     )
     {% endif %}
+   {% for col in s.required_columns %}
+   AND {{ col }} IS NOT NULL
+   {% endfor %}
 ),
 {% endfor %}
+
+
+-- Logic
 
 stg_taxi_trip_res AS (
 
@@ -79,10 +98,13 @@ stg_taxi_trip_res AS (
             {% endif %}
         {% endfor %}
         '{{ s.type }}' AS type,
-        CURRENT_TIMESTAMP as dwh_updated_at
+        {{ timestamp_mock() }} as dwh_updated_at
     FROM import_{{ s.type }}_trip_data
     {% if not loop.last %}UNION ALL{% endif %}
 {% endfor %}
 )
+
+
+-- Result
 
 SELECT * FROM stg_taxi_trip_res

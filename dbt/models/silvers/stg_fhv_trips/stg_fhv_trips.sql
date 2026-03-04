@@ -1,5 +1,6 @@
 {{
     config(
+        materialized='incremental',
         incremental_strategy='append',
         partition_by=['partition_date']
     )
@@ -14,12 +15,21 @@ get_max_partition_date AS (
 ),
 {% endif %}
 
+{% set required_columns = [
+    'dispatching_base_num', 'PULocationID', 'pickup_datetime',
+    'DOLocationID', 'dropOff_datetime'
+] %}
+
 import_fhv_trip_data AS (
     SELECT *
     FROM {{ ref('fhv_trip_data') }}
+    WHERE 1=1
     {% if is_incremental() %}
-    WHERE partition_date > (SELECT max_date FROM get_max_partition_date)
+    AND partition_date > (SELECT max_date FROM get_max_partition_date)
     {% endif %}
+    {% for column in required_columns %}
+    AND {{ column }} IS NOT NULL
+    {% endfor %}
 ),
 
 stg_fhv_trip_res AS (
@@ -33,8 +43,11 @@ stg_fhv_trip_res AS (
         dispatching_base_num AS dispatching_base_id,
         processing_time,
         partition_date,
-        CURRENT_TIMESTAMP as dwh_updated_at
+        {{ timestamp_mock() }} as dwh_updated_at
     FROM import_fhv_trip_data
 )
+
+
+-- Result
 
 SELECT * FROM stg_fhv_trip_res

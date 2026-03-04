@@ -1,14 +1,13 @@
 version: 2
 
 models:
-  - name: taxi_trips_unpivot_res
+  - name: taxi_trips_unpivot
     description: >
       Hourly aggregated taxi trips fact model in long (unpivoted) format.
       Each row represents a single KPI metric (metric_name, metric_value)
       for a specific combination of vendor, pickup/dropoff locations,
-      pickup/dropoff hour, taxi type, payment type, rate code and trip type.
-      Supports incremental merge loading partitioned by partition_date,
-      taxi_type and metric_name.
+      pickup hour, taxi type, payment type, rate code and trip type.
+      Supports incremental merge loading partitioned by partition_date.
 
     config:
       tags: ['fact', 'hourly', 'unpivot']
@@ -43,12 +42,6 @@ models:
         tests:
           - not_null
 
-      - name: date_hour_dropoff_datetime
-        description: "Dropoff timestamp truncated to hour level."
-        data_type: timestamp
-        tests:
-          - not_null
-
       - name: taxi_type
         description: "Taxi stream type (yellow or green)."
         data_type: string
@@ -70,7 +63,7 @@ models:
           - not_null
 
       - name: trip_type
-        description: "Trip type (street-hail or dispatch; null possible for yellow taxi depending on source logic)."
+        description: "Trip type (street-hail or dispatch; nullable for yellow taxi)."
         data_type: int
 
       # =========================
@@ -90,28 +83,29 @@ models:
       - name: metric_name
         description: >
           Name of the KPI metric. Possible values:
-          total_improvement_surcharge, total_congestion_surcharge,
-          total_passenger_count, avg_trip_distance, mta_tax, extra,
-          fare_amount, tip_amount, tolls_amount, total_amount,
+          total_trips, total_improvement_surcharge, total_congestion_surcharge,
+          total_passenger_count, total_trip_distance, total_mta_tax, total_extra,
+          total_fare_amount, total_tip_amount, total_tolls_amount, total_amount,
           total_airport_fee, total_ehail_fee.
         data_type: string
         tests:
           - not_null
           - accepted_values:
-              values:
-                - total_improvement_surcharge
-                - total_congestion_surcharge
-                - total_passenger_count
-                - avg_trip_distance
-                - mta_tax
-                - extra
-                - fare_amount
-                - tip_amount
-                - tolls_amount
-                - total_amount
-                - total_airport_fee
-                - total_ehail_fee
-                - total_trips
+              arguments:
+                values:
+                  - total_trips
+                  - total_improvement_surcharge
+                  - total_congestion_surcharge
+                  - total_passenger_count
+                  - total_trip_distance
+                  - total_mta_tax
+                  - total_extra
+                  - total_fare_amount
+                  - total_tip_amount
+                  - total_tolls_amount
+                  - total_amount
+                  - total_airport_fee
+                  - total_ehail_fee
 
       - name: metric_value
         description: "Aggregated metric value corresponding to metric_name."
@@ -136,7 +130,6 @@ models:
             - pickup_location_id
             - dropoff_location_id
             - date_hour_pickup_datetime
-            - date_hour_dropoff_datetime
             - taxi_type
             - payment_type
             - rate_code_id

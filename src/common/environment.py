@@ -1,9 +1,12 @@
 import os
+from dotenv import load_dotenv
 
 
-# TODO upgrade to support dotenv, env file yml file configs, and os env vars
-def require_env(name: str) -> str:
-    value = os.environ.get(name)
-    if not value:
+load_dotenv()
+
+
+def require_env(name: str, default: str | None = None) -> str:
+    value = os.getenv(name, default)
+    if value is None:
         raise RuntimeError(f"Missing required env variable: {name}")
     return value

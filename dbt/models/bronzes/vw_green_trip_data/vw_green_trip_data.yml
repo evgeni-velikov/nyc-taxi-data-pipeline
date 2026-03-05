@@ -1,10 +1,10 @@
 version: 2
 
 models:
-  - name: yellow_trip_data_bronze
+  - name: vw_green_trip_data
     description: >
-      Raw Yellow Taxi trip data ingested from bronze source layer.
-      Mirrors the source schema without business transformations.
+      Raw Green Taxi trip data ingested from bronze source layer.
+      This view mirrors the source schema without business transformations.
 
     columns:
       - name: VendorID
@@ -12,25 +12,19 @@ models:
         tests:
           - not_null
 
-      - name: tpep_pickup_datetime
+      - name: lpep_pickup_datetime
         description: "Timestamp when the trip started."
         tests:
           - not_null
 
-      - name: tpep_dropoff_datetime
+      - name: lpep_dropoff_datetime
         description: "Timestamp when the trip ended."
 
-      - name: passenger_count
-        description: "Number of passengers in the vehicle."
-
-      - name: trip_distance
-        description: "Trip distance in miles."
+      - name: store_and_fwd_flag
+        description: "Flag indicating whether the trip record was stored before being sent to the vendor (Y/N)."
 
       - name: RatecodeID
         description: "Rate code applied to the trip."
-
-      - name: store_and_fwd_flag
-        description: "Flag indicating whether the record was stored before being sent to the vendor (Y/N)."
 
       - name: PULocationID
         description: "Pickup TLC location ID."
@@ -40,8 +34,11 @@ models:
       - name: DOLocationID
         description: "Dropoff TLC location ID."
 
-      - name: payment_type
-        description: "Payment method used for the trip."
+      - name: passenger_count
+        description: "Number of passengers in the vehicle."
+
+      - name: trip_distance
+        description: "Trip distance in miles."
 
       - name: fare_amount
         description: "Base fare amount."
@@ -58,17 +55,23 @@ models:
       - name: tolls_amount
         description: "Total tolls paid during the trip."
 
+      - name: ehail_fee
+        description: "E-hail fee applied to the trip."
+
       - name: improvement_surcharge
         description: "Improvement surcharge applied to the trip."
 
       - name: total_amount
         description: "Total amount charged to the passenger."
 
+      - name: payment_type
+        description: "Payment method used for the trip."
+
+      - name: trip_type
+        description: "Type of trip (e.g., street hail or dispatch)."
+
       - name: congestion_surcharge
         description: "Congestion surcharge applied in designated zones."
-
-      - name: airport_fee
-        description: "Airport fee applied when applicable."
 
       - name: processing_time
         description: "Timestamp when the trip record was processed."

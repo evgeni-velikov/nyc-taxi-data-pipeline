@@ -89,7 +89,7 @@ services:
         echo 'Waiting for Hive Metastore... attempt' \$i;
         sleep 2;
       done;
-      /opt/spark/sbin/start-thriftserver.sh --master spark://spark-master:7077 --conf spark.cores.max=1 --conf spark.executor.cores=1 --conf spark.executor.memory=1g --conf spark.dynamicAllocation.enabled=false && tail -f /dev/null
+      /opt/spark/sbin/start-thriftserver.sh --master spark://spark-master:7077 --conf spark.cores.max=4 --conf spark.executor.cores=4 --conf spark.executor.memory=4g --conf spark.dynamicAllocation.enabled=false && tail -f /dev/null
       "
     env_file:
       - .env
@@ -140,6 +140,7 @@ services:
       - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
     command: >
       bash -c "airflow db migrate && airflow users create \
@@ -158,6 +159,7 @@ services:
       - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
       - ./dbt:/opt/dbt
       - ./src:/opt/src
@@ -186,6 +188,7 @@ services:
       - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
       - ./dbt:/opt/dbt
       - ./src:/opt/src
@@ -208,6 +211,7 @@ services:
       - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
       - ./dbt:/opt/dbt
       - ./src:/opt/src

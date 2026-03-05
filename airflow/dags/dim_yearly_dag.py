@@ -3,7 +3,12 @@ from docker.types import Mount
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
 
-from ..common.constants import COMMON_DOCKER_ARGS, HOST_PROJECT_PATH
+from constants import (
+    COMMON_DOCKER_ARGS,
+    HOST_PROJECT_PATH,
+    ENVIRONMENT_DOCKER_ARGS
+)
+from utilities import create_dbt_model_task
 
 
 with DAG(
@@ -12,16 +17,8 @@ with DAG(
     schedule="@yearly",
     catchup=False,
     tags=["dbt", "dim"],
+    max_active_runs=1,
+    max_active_tasks=2,
 ) as dim_yearly_dag:
 
-    dbt_run = DockerOperator(
-        task_id="dim_date_calendar",
-        image="data-dbt:latest",
-        command=["bash", "-c", "dbt deps && dbt run --target prod --select dim_date_calendar"],
-        working_dir="/dbt",
-        mounts=[
-            Mount(source=f"{HOST_PROJECT_PATH}/dbt", target="/dbt", type="bind"),
-            Mount(source=f"{HOST_PROJECT_PATH}/dbt/profiles", target="/root/.dbt", type="bind"),
-        ],
-        **COMMON_DOCKER_ARGS,
-    )
+    create_dbt_model_task(model_name="dim_date_calendar", schema="gold")

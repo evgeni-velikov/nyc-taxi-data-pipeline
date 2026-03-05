@@ -1,10 +1,10 @@
 version: 2
 
 models:
-  - name: fhv_trip_data_bronze
+  - name: vw_fhv_trip_data
     description: >
       Raw FHV trip data ingested from bronze source layer.
-      This model mirrors the source structure with no business transformations.
+      This view mirrors the source structure with no business transformations.
 
     columns:
       - name: dispatching_base_num

@@ -4,7 +4,7 @@ from airflow import DAG
 from airflow.datasets import Dataset
 from airflow.utils.task_group import TaskGroup
 
-from ..common import (
+from utilities import (
     create_dbt_model_task,
     create_dbt_freshness_task,
     send_notification_email
@@ -20,9 +20,11 @@ with DAG(
     schedule=[fhv_dataset, green_dataset, yellow_dataset],
     catchup=False,
     tags=["dbt", "transformation", "silver", "gold"],
-    email_on_failure=True,
-    email="",
-    on_failure_callback=send_notification_email,
+    max_active_runs=1,
+    max_active_tasks=4,
+    # email_on_failure=True,
+    # email="",
+    # on_failure_callback=send_notification_email,
 ) as transformation_dag:
 
     freshness = create_dbt_freshness_task()

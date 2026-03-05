@@ -22,7 +22,7 @@ get_max_partition_date AS (
 
 import_fhv_trip_data AS (
     SELECT *
-    FROM {{ ref('fhv_trip_data') }}
+    FROM {{ ref('vw_fhv_trip_data') }}
     WHERE 1=1
     {% if is_incremental() %}
     AND partition_date > (SELECT max_date FROM get_max_partition_date)
@@ -30,6 +30,8 @@ import_fhv_trip_data AS (
     {% for column in required_columns %}
     AND {{ column }} IS NOT NULL
     {% endfor %}
+    AND pickup_datetime < dropoff_datetime
+    AND DATE_TRUNC('month', pickup_datetime) BETWEEN ADD_MONTHS(partition_date, -1) AND partition_date
 ),
 
 stg_fhv_trip_res AS (

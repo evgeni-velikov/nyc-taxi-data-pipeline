@@ -29,7 +29,7 @@ df = df.withColumn("ingestion_date", current_date())
 
 spark.stop()
 
-# docker compose exec spark-master spark-submit /app/src/jobs/bootstrap.py
+# docker compose exec spark-master spark-submit /app/src/jobs/ingestion.py
 # docker compose exec spark-thrift spark-sql
 # docker compose run --rm dbt dbt debug
 # docker compose run --rm dbt dbt build --select tag:stg_fhv_trips

@@ -5,6 +5,7 @@ from src.common.utils import read_file, normalize_schema, enrich_with_metadata
 
 
 def run_bootstrap(spark: SparkSession, config: Config):
+    spark.sql(f"CREATE DATABASE IF NOT EXISTS {config.bronze_schema}")
     spark.sql(f"USE SCHEMA {config.bronze_schema}")
 
     for table in config.bronze_tables:

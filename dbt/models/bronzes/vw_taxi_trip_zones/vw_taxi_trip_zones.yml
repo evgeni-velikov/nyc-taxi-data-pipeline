@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: vw_taxi_trip_zones
+    description: >
+      Bronze staging view exposing raw NYC Taxi TLC zone reference data
+      loaded from the bronze source table `taxi_trip_zones`.
+
+      Each record represents a geographic taxi zone used in the NYC Taxi dataset.
+      The model keeps the structure close to the raw source and is intended
+      to serve as the first transformation layer before building curated
+      dimension models in the silver/gold layers.
+
+    config:
+      tags: ['taxi', 'zones']
+
+    columns:
+
+      - name: LocationID
+        description: "Taxi zone identifier defined by NYC TLC."
+        data_type: int
+
+      - name: Borough
+        description: >
+          Borough where the taxi zone is located
+          (e.g. Manhattan, Brooklyn, Queens, Bronx, Staten Island).
+        data_type: string
+
+      - name: Zone
+        description: "Human-readable taxi zone name."
+        data_type: string
+
+      - name: service_zone
+        description: >
+          Taxi service classification such as Yellow Zone,
+          Boro Zone, Airports, or EWR.
+        data_type: string
+
+      - name: processing_time
+        description: "Timestamp when the record was ingested into the bronze layer."
+        data_type: timestamp

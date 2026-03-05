@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession, functions as F
 from pyspark.sql.types import NullType
 
 
-def read_file(spark: SparkSession, path: str, file_format: str):
+def read_file(spark: SparkSession, path: str, file_format: str, options: dict | None = None):
     """
     Reads a file using Spark.
     Works both locally and in Databricks.
@@ -17,7 +17,13 @@ def read_file(spark: SparkSession, path: str, file_format: str):
     except Exception as e:
         raise FileNotFoundError(f"Path not found: {path}") from e
 
-    return spark.read.format(file_format).load(path)
+    reader = spark.read.format(file_format)
+
+    if options:
+        for k, v in options.items():
+            reader = reader.option(k, v)
+
+    return reader.load(path)
 
 
 def normalize_schema(df, reference_schema=None):

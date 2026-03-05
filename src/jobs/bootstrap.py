@@ -30,6 +30,26 @@ def run_bootstrap(spark: SparkSession, config: Config):
         )
 
 
+def get_taxi_zones(spark: SparkSession, config: Config):
+    file_path = f"{config.raw_folder}/taxi_zones.csv"
+    df = read_file(
+        spark=spark, path=file_path, file_format="csv",
+        options={"header": "true", "inferSchema": "true"}
+    )
+    table = f"{config.catalog_name}.{config.bronze_schema}.taxi_trip_zones"
+
+    (
+        df.write.format("delta")
+        .mode("overwrite")
+        .option("overwriteSchema", "true")
+        .saveAsTable(table)
+    )
+
+
 if __name__ == "__main__":
     from src.common.spark import get_spark_session
-    run_bootstrap(spark=get_spark_session(), config=Config())
+    config = Config()
+    spark = get_spark_session()
+
+    run_bootstrap(spark=spark, config=config)
+    get_taxi_zones(spark=spark, config=config)

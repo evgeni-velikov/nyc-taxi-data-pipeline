@@ -1,0 +1,129 @@
+version: 2
+
+models:
+  - name: marts_trips_revenue_hourly
+    description: >
+      Hourly aggregated taxi trips revenue mart. 
+      The model combines hourly revenue fact data with calendar and taxi zone 
+      dimensions to support analytics and BI dashboards.
+
+    columns:
+
+      - name: vendor_id
+        description: Unique identifier of the taxi vendor.
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: TLC zone identifier where the trip started.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_taxi_zones')
+              field: location_id
+
+      - name: dropoff_location_id
+        description: TLC zone identifier where the trip ended.
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: Type of taxi service (e.g. yellow, green).
+        tests:
+          - not_null
+
+      - name: payment_type
+        description: Payment method used for the trip.
+        tests:
+          - not_null
+
+      - name: borough
+        description: Borough where the pickup zone belongs.
+
+      - name: zone
+        description: Taxi zone name.
+
+      - name: service_zone
+        description: Taxi service zone category.
+
+      - name: total_trips
+        description: Total number of trips aggregated for the hour.
+        tests:
+          - not_null
+
+      - name: total_fare_amount
+        description: Total fare revenue aggregated for the hour.
+
+      - name: avg_service_charge_amount
+        description: Average service charge per trip.
+
+      - name: total_tip_amount
+        description: Total tips collected for the trips.
+
+      - name: avg_tip_amount
+        description: Average tip amount per trip.
+
+      - name: total_tolls_amount
+        description: Total toll charges collected.
+
+      - name: avg_tolls_amount
+        description: Average toll charge per trip.
+
+      - name: total_amount
+        description: Total trip revenue including fare, tips, tolls and surcharges.
+
+      - name: avg_total_amount
+        description: Average total trip revenue per trip.
+
+      - name: datetime_hour
+        description: Timestamp representing the start of the hour for the trip aggregation.
+        tests:
+          - not_null
+
+      - name: date
+        description: Calendar date of the trip aggregation.
+        tests:
+          - not_null
+
+      - name: year
+        description: Calendar year.
+
+      - name: fiscal_year
+        description: Fiscal year derived from calendar date.
+
+      - name: quarter
+        description: Calendar quarter.
+
+      - name: fiscal_quarter
+        description: Fiscal quarter.
+
+      - name: month
+        description: Calendar month.
+
+      - name: month_name
+        description: Name of the month.
+
+      - name: week_of_year
+        description: Week number of the year.
+
+      - name: day_of_week
+        description: Day of the week (1-7).
+
+      - name: is_weekend
+        description: Boolean flag indicating whether the date falls on a weekend.
+
+      - name: day
+        description: Day of the month.
+
+      - name: hour
+        description: Hour of the day (0-23).
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - vendor_id
+            - pickup_location_id
+            - dropoff_location_id
+            - taxi_type
+            - payment_type
+            - datetime_hour

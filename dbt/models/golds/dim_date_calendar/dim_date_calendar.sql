@@ -12,49 +12,55 @@ dim_date_spine AS (
 
 ),
 
+hours AS (
+    SELECT explode(sequence(0,23)) AS hour
+),
+
+date_hours AS (
+    SELECT
+        d.date_day,
+        h.hour,
+        timestampadd(hour, h.hour, d.date_day) AS datetime_hour
+    FROM dim_date_spine d
+    CROSS JOIN hours h
+),
+
 compute_calendar AS (
     SELECT
-        CAST(date_day AS date) AS date,
-        CAST(date_format(date_day, 'yyyyMMdd') AS INT) AS date_key,
-        YEAR(date_day) AS year,
-        QUARTER(date_day) AS quarter,
-        MONTH(date_day) AS month,
-        date_format(date_day, 'MMMM') AS month_name,
-        WEEKOFYEAR(date_day) AS week_of_year,
-        DAY(date_day) AS day,
+        CAST(datetime_hour AS date) AS date,
+        datetime_hour,
 
-        DAYOFWEEK(date_day) AS day_of_week,
-        CASE WHEN DAYOFWEEK(date_day) IN (1, 7) THEN true ELSE false END AS is_weekend,
+        CAST(date_format(datetime_hour, 'yyyyMMdd') AS INT) AS date_key,
+        CAST(date_format(datetime_hour, 'yyyyMMddHH') AS BIGINT) AS hour_key,
+
+        YEAR(datetime_hour) AS year,
+        QUARTER(datetime_hour) AS quarter,
+        MONTH(datetime_hour) AS month,
+        date_format(datetime_hour, 'MMMM') AS month_name,
+        WEEKOFYEAR(datetime_hour) AS week_of_year,
+        DAY(datetime_hour) AS day,
+
+        HOUR(datetime_hour) AS hour,
+
+        DAYOFWEEK(datetime_hour) AS day_of_week,
+        CASE WHEN DAYOFWEEK(datetime_hour) IN (1, 7) THEN true ELSE false END AS is_weekend,
 
         CASE
-            WHEN MONTH(date_day) >= 4 THEN YEAR(date_day)
-            ELSE YEAR(date_day) - 1
+            WHEN MONTH(datetime_hour) >= 4 THEN YEAR(datetime_hour)
+            ELSE YEAR(datetime_hour) - 1
         END AS fiscal_year,
 
         CASE
-            WHEN MONTH(date_day) BETWEEN 4 AND 6 THEN 1
-            WHEN MONTH(date_day) BETWEEN 7 AND 9 THEN 2
-            WHEN MONTH(date_day) BETWEEN 10 AND 12 THEN 3
+            WHEN MONTH(datetime_hour) BETWEEN 4 AND 6 THEN 1
+            WHEN MONTH(datetime_hour) BETWEEN 7 AND 9 THEN 2
+            WHEN MONTH(datetime_hour) BETWEEN 10 AND 12 THEN 3
             ELSE 4
         END AS fiscal_quarter
-
-    FROM dim_date_spine
+    FROM date_hours
 ),
 
 dim_date_calendar_res AS (
-    SELECT
-        date,
-        date_key,
-        year,
-        quarter,
-        month,
-        month_name,
-        week_of_year,
-        day,
-        day_of_week,
-        is_weekend,
-        fiscal_year,
-        fiscal_quarter
+    SELECT *
     FROM compute_calendar
 )
 

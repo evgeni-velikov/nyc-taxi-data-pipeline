@@ -19,6 +19,7 @@ sources:
         freshness:
           warn_after: { count: 2, period: day }
           error_after: { count: 3, period: day }
+      - name: taxi_trip_zones
 
   - name: mock
     schema: mock_tables

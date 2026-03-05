@@ -52,7 +52,7 @@ fact_zone_activity_hourly_res AS (
         BIGINT(NULL) AS total_passenger_count,
         DOUBLE(NULL) AS total_trip_distance,
         MAX(dwh_updated_at) AS max_dwh_updated_at,
-        CURRENT_TIMESTAMP() AS dwh_updated_at
+        {{ timestamp_mock() }} AS dwh_updated_at
     FROM import_stg_fhv_trips
     GROUP BY 1,3,4,5,6
     UNION ALL

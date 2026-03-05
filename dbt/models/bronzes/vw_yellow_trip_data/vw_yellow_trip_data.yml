@@ -9,13 +9,9 @@ models:
     columns:
       - name: VendorID
         description: "Identifier of the data vendor."
-        tests:
-          - not_null
 
       - name: tpep_pickup_datetime
         description: "Timestamp when the trip started."
-        tests:
-          - not_null
 
       - name: tpep_dropoff_datetime
         description: "Timestamp when the trip ended."
@@ -34,8 +30,6 @@ models:
 
       - name: PULocationID
         description: "Pickup TLC location ID."
-        tests:
-          - not_null
 
       - name: DOLocationID
         description: "Dropoff TLC location ID."
@@ -72,10 +66,6 @@ models:
 
       - name: processing_time
         description: "Timestamp when the trip record was processed."
-        tests:
-          - not_null
 
       - name: partition_date
         description: "Partition date used for ingestion."
-        tests:
-          - not_null

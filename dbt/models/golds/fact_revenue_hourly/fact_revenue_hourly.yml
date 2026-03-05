@@ -1,0 +1,125 @@
+version: 2
+
+models:
+  - name: fact_revenue_hourly
+    description: >
+      Hourly aggregated taxi payment activity fact table.
+      The model aggregates monetary and trip metrics from the unpivoted
+      taxi KPI dataset by vendor, pickup/dropoff zones, taxi type,
+      payment type, and pickup hour.
+
+      Metrics are reconstructed from the long-format metric model
+      using conditional aggregation. The table is built incrementally
+      using a merge strategy and watermark based on max_dwh_updated_at.
+
+    config:
+      tags: ['fact', 'hourly', 'payments', 'taxi']
+
+    columns:
+
+      # =========================
+      # Business Dimensions (Grain)
+      # =========================
+
+      - name: vendor_id
+        description: "Identifier of the taxi data vendor."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: "TLC pickup zone identifier."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: dropoff_location_id
+        description: "TLC dropoff zone identifier."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: date_hour_pickup_datetime
+        description: "Pickup timestamp truncated to hour level."
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: "Taxi stream type (yellow or green)."
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - yellow
+                  - green
+
+      - name: payment_type
+        description: "Payment method used for the trip."
+        data_type: int
+        tests:
+          - not_null
+
+      # =========================
+      # Metrics
+      # =========================
+
+      - name: total_trips
+        description: "Total number of taxi trips."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: total_fare_amount
+        description: "Total fare amount aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_tip_amount
+        description: "Total tip amount aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_tolls_amount
+        description: "Total toll charges aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_amount
+        description: "Total trip amount including fare, tips, tolls, and surcharges."
+        data_type: double
+        tests:
+          - not_null
+
+      # =========================
+      # Technical Columns
+      # =========================
+
+      - name: max_dwh_updated_at
+        description: >
+          Maximum source dwh_updated_at timestamp used for incremental
+          processing watermark.
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: dwh_updated_at
+        description: "Timestamp when the record was processed in the DWH."
+        data_type: timestamp
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - vendor_id
+            - pickup_location_id
+            - dropoff_location_id
+            - date_hour_pickup_datetime
+            - taxi_type
+            - payment_type

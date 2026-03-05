@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  - name: fact_charges_hourly
+    description: >
+      Hourly aggregated taxi surcharge and fee fact table.
+      The model reconstructs selected surcharge-related KPIs from the
+      unpivoted taxi metrics dataset and aggregates them by vendor,
+      pickup/dropoff zones, taxi type, and pickup hour.
+
+      Metrics include various regulatory surcharges, airport and
+      e-hail fees, as well as trip counts. The model is built using
+      conditional aggregation through a reusable macro and supports
+      incremental loading with merge strategy.
+
+    config:
+      tags: ['fact', 'hourly', 'charges', 'taxi']
+
+    columns:
+
+      # =========================
+      # Business Dimensions (Grain)
+      # =========================
+
+      - name: vendor_id
+        description: "Identifier of the taxi data vendor."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: "TLC pickup zone identifier."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: dropoff_location_id
+        description: "TLC dropoff zone identifier."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: date_hour_pickup_datetime
+        description: "Pickup timestamp truncated to hour level."
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: "Taxi stream type (yellow or green)."
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - yellow
+                  - green
+
+      # =========================
+      # Metrics
+      # =========================
+
+      - name: total_trips
+        description: "Total number of taxi trips."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: total_airport_fee
+        description: "Total airport fee amount aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_ehail_fee
+        description: "Total e-hail fee amount aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_improvement_surcharge
+        description: "Total improvement surcharge applied to taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_congestion_surcharge
+        description: "Total congestion surcharge aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_mta_tax
+        description: "Total MTA tax aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_extra
+        description: "Total extra charges applied to taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      # =========================
+      # Technical Columns
+      # =========================
+
+      - name: max_dwh_updated_at
+        description: >
+          Maximum source dwh_updated_at timestamp used as the incremental
+          processing watermark.
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: dwh_updated_at
+        description: "Timestamp when the record was processed in the DWH."
+        data_type: timestamp
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - vendor_id
+            - pickup_location_id
+            - dropoff_location_id
+            - date_hour_pickup_datetime
+            - taxi_type

@@ -31,7 +31,7 @@
             {% endfor %}
 
             MAX(dwh_updated_at) AS max_dwh_updated_at,
-            CURRENT_TIMESTAMP AS dwh_updated_at
+            {{ timestamp_mock() }} AS dwh_updated_at
         FROM import_source
         GROUP BY
             {% for col in grain_columns %}

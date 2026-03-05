@@ -1,0 +1,124 @@
+version: 2
+
+models:
+  - name: dim_date_calendar
+    description: >
+      Date dimension table generated using a continuous date spine
+      between 2010-01-01 and 2050-12-31. Provides standard calendar
+      attributes as well as fiscal calendar fields where the fiscal
+      year starts in April. Useful for time-based analytics, reporting,
+      and joining fact tables to a standardized calendar dimension.
+
+    config:
+      tags: ['dimension', 'calendar', 'date']
+
+    columns:
+
+      # =========================
+      # Primary Key
+      # =========================
+
+      - name: date_key
+        description: "Surrogate key for the date in YYYYMMDD integer format."
+        data_type: int
+        tests:
+          - not_null
+          - unique
+
+      # =========================
+      # Calendar Date
+      # =========================
+
+      - name: date
+        description: "Actual calendar date."
+        data_type: date
+        tests:
+          - not_null
+          - unique
+
+      # =========================
+      # Standard Calendar Attributes
+      # =========================
+
+      - name: year
+        description: "Calendar year of the date."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: quarter
+        description: "Calendar quarter of the date (1–4)."
+        data_type: int
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4]
+
+      - name: month
+        description: "Month number within the year (1–12)."
+        data_type: int
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1,2,3,4,5,6,7,8,9,10,11,12]
+
+      - name: month_name
+        description: "Full textual month name (e.g., January, February)."
+        data_type: string
+        tests:
+          - not_null
+
+      - name: week_of_year
+        description: "ISO week number within the year."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: day
+        description: "Day of the month (1–31)."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: day_of_week
+        description: "Numeric representation of day of week (1–7 depending on SQL engine)."
+        data_type: int
+        tests:
+          - not_null
+
+      - name: is_weekend
+        description: "Boolean flag indicating whether the date falls on a weekend."
+        data_type: boolean
+        tests:
+          - not_null
+
+      # =========================
+      # Fiscal Calendar Attributes
+      # =========================
+
+      - name: fiscal_year
+        description: >
+          Fiscal year derived from the calendar date. The fiscal year
+          starts in April and ends in March of the following year.
+        data_type: int
+        tests:
+          - not_null
+
+      - name: fiscal_quarter
+        description: >
+          Fiscal quarter derived from the fiscal calendar where
+          Q1 = Apr–Jun, Q2 = Jul–Sep, Q3 = Oct–Dec, Q4 = Jan–Mar.
+        data_type: int
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4]
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - date
+            - date_key

@@ -1,0 +1,122 @@
+version: 2
+
+models:
+  - name: fact_zone_activity_hourly
+    description: >
+      Hourly aggregated taxi zone activity fact table combining FHV dispatching
+      base activity and vendor-based taxi trip metrics. The model merges two
+      logical operator types:
+        • dispatching_base – derived from FHV trip records
+        • vendor – aggregated taxi metrics produced from the unpivoted taxi KPI model.
+
+      The grain of the table is one row per operator, pickup/dropoff zone,
+      taxi type and pickup hour. The model supports incremental loading
+      using max_dwh_updated_at watermarks and merge strategy.
+
+    config:
+      tags: ['fact', 'hourly', 'taxi', 'zone_activity']
+
+    columns:
+
+      # =========================
+      # Business Dimensions (Grain)
+      # =========================
+
+      - name: operator_id
+        description: >
+          Identifier of the operator responsible for the trip activity.
+          Represents either a vendor_id or dispatching_base_id depending on operator_type.
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: operator_type
+        description: "Type of operator generating the activity."
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - vendor
+                  - dispatching_base
+
+      - name: pickup_location_id
+        description: "TLC pickup zone identifier."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: dropoff_location_id
+        description: "TLC dropoff zone identifier."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: date_hour_pickup_datetime
+        description: "Pickup timestamp truncated to hour level."
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: "Taxi stream type (yellow, green, fhv)."
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - yellow
+                  - green
+                  - fhv
+
+      # =========================
+      # Metrics
+      # =========================
+
+      - name: total_trips
+        description: "Total number of trips recorded for the operator and zone combination."
+        data_type: bigint
+        tests:
+          - not_null
+
+      - name: total_passenger_count
+        description: >
+          Total number of passengers aggregated from taxi trip records.
+          Not applicable for FHV dispatching_base records.
+        data_type: bigint
+
+      - name: total_trip_distance
+        description: >
+          Total aggregated trip distance in miles.
+          Not applicable for FHV dispatching_base records.
+        data_type: double
+
+      # =========================
+      # Technical Columns
+      # =========================
+
+      - name: max_dwh_updated_at
+        description: >
+          Maximum source dwh_updated_at timestamp used for incremental
+          watermark processing.
+        data_type: timestamp
+        tests:
+          - not_null
+
+      - name: dwh_updated_at
+        description: "Timestamp when the record was processed in the DWH."
+        data_type: timestamp
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - operator_id
+            - operator_type
+            - pickup_location_id
+            - dropoff_location_id
+            - date_hour_pickup_datetime
+            - taxi_type

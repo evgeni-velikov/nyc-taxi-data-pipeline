@@ -10,9 +10,11 @@ from utilities import (
     send_notification_email
 )
 
+
 fhv_dataset = Dataset("bronze_fhv_trip_data")
 green_dataset = Dataset("bronze_green_trip_data")
 yellow_dataset = Dataset("bronze_yellow_trip_data")
+taxi_trip_zone = Dataset("bronze_taxi_trip_zone")
 
 with DAG(
     dag_id="transformation_dag",

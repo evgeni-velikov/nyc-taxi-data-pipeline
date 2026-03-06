@@ -1,0 +1,114 @@
+version: 2
+
+models:
+  - name: marts_trips_zone_activity_hourly
+    description: >
+      Hourly aggregated taxi zone activity mart generated from the
+      fact_zone_activity_hourly fact table. The model enriches trip
+      metrics with calendar attributes and taxi zone metadata and
+      calculates both total and average metrics.
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - operator_id
+            - operator_type
+            - pickup_location_id
+            - dropoff_location_id
+            - date_hour_pickup_datetime
+            - taxi_type
+
+    columns:
+
+      - name: operator_id
+        description: Unique identifier of the taxi operator.
+        tests:
+          - not_null
+
+      - name: operator_type
+        description: Type or category of taxi operator.
+
+      - name: pickup_location_id
+        description: Taxi zone where the trip started.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('vw_taxi_trip_zones')
+              field: LocationID
+
+      - name: dropoff_location_id
+        description: Taxi zone where the trip ended.
+        tests:
+          - relationships:
+              to: ref('vw_taxi_trip_zones')
+              field: LocationID
+
+      - name: date_hour_pickup_datetime
+        description: Timestamp representing the hour of the pickup event.
+        tests:
+          - not_null
+
+      - name: taxi_type
+        description: Type of taxi service used for the trip.
+
+      - name: borough
+        description: Borough associated with the pickup taxi zone.
+
+      - name: zone
+        description: Human readable taxi zone name.
+
+      - name: service_zone
+        description: Service zone classification.
+
+      - name: total_passenger_count
+        description: Total number of passengers across trips in the given hour.
+
+      - name: avg_passenger_count
+        description: Average number of passengers per trip.
+
+      - name: total_trip_distance
+        description: Total trip distance aggregated for the hour.
+
+      - name: avg_trip_distance
+        description: Average trip distance per trip.
+
+      - name: datetime_hour
+        description: Hour-level timestamp used for aggregation.
+
+      - name: date
+        description: Calendar date derived from the hourly timestamp.
+        tests:
+          - not_null
+
+      - name: year
+        description: Calendar year.
+
+      - name: fiscal_year
+        description: Fiscal year according to the date dimension.
+
+      - name: quarter
+        description: Calendar quarter.
+
+      - name: fiscal_quarter
+        description: Fiscal quarter.
+
+      - name: month
+        description: Numeric month.
+
+      - name: month_name
+        description: Name of the month.
+
+      - name: week_of_year
+        description: Week number within the year.
+
+      - name: day_of_week
+        description: Day of week number.
+
+      - name: is_weekend
+        description: Boolean flag indicating weekend days.
+
+      - name: day
+        description: Day of the month.
+
+      - name: hour
+        description: Hour of the day (0–23).

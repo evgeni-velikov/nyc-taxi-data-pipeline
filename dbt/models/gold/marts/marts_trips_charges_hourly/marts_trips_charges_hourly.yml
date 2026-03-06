@@ -1,0 +1,134 @@
+version: 2
+
+models:
+  - name: marts_trips_charges_hourly
+    description: >
+      Hourly taxi charges mart derived from fact_charges_hourly.
+      The model aggregates charge-related metrics per hour and enriches
+      them with calendar and taxi zone attributes.
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - vendor_id
+            - pickup_location_id
+            - dropoff_location_id
+            - taxi_type
+            - payment_type
+            - datetime_hour
+
+    columns:
+
+      - name: vendor_id
+        description: Identifier of the taxi vendor.
+        tests:
+          - not_null
+
+      - name: pickup_location_id
+        description: Taxi zone where the trip started.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('vw_taxi_trip_zones')
+              field: LocationID
+
+      - name: dropoff_location_id
+        description: Taxi zone where the trip ended.
+        tests:
+          - relationships:
+              to: ref('vw_taxi_trip_zones')
+              field: LocationID
+
+      - name: taxi_type
+        description: Type of taxi service.
+
+      - name: payment_type
+        description: Method of payment used for the trip.
+
+      - name: borough
+        description: Borough associated with the pickup taxi zone.
+
+      - name: zone
+        description: Human readable taxi zone name.
+
+      - name: service_zone
+        description: Service zone classification.
+
+      - name: total_airport_fee
+        description: Total airport fee collected for trips in the hour.
+
+      - name: avg_airport_fee
+        description: Average airport fee per trip.
+
+      - name: total_ehail_fee
+        description: Total e-hail fee charged.
+
+      - name: avg_ehail_fee
+        description: Average e-hail fee per trip.
+
+      - name: total_improvement_surcharge
+        description: Total improvement surcharge collected.
+
+      - name: avg_improvement_surcharge
+        description: Average improvement surcharge per trip.
+
+      - name: total_congestion_surcharge
+        description: Total congestion surcharge collected.
+
+      - name: avg_congestion_surcharge
+        description: Average congestion surcharge per trip.
+
+      - name: total_mta_tax
+        description: Total MTA tax collected.
+
+      - name: avg_mta_tax
+        description: Average MTA tax per trip.
+
+      - name: total_extra
+        description: Total extra charges.
+
+      - name: avg_extra
+        description: Average extra charge per trip.
+
+      - name: datetime_hour
+        description: Hour-level timestamp used for aggregation.
+        tests:
+          - not_null
+
+      - name: date
+        description: Calendar date derived from the timestamp.
+        tests:
+          - not_null
+
+      - name: year
+        description: Calendar year.
+
+      - name: fiscal_year
+        description: Fiscal year.
+
+      - name: quarter
+        description: Calendar quarter.
+
+      - name: fiscal_quarter
+        description: Fiscal quarter.
+
+      - name: month
+        description: Numeric month.
+
+      - name: month_name
+        description: Name of the month.
+
+      - name: week_of_year
+        description: Week number in the year.
+
+      - name: day_of_week
+        description: Day of the week number.
+
+      - name: is_weekend
+        description: Boolean flag indicating weekend days.
+
+      - name: day
+        description: Day of the month.
+
+      - name: hour
+        description: Hour of the day (0–23).

@@ -6,6 +6,7 @@ from airflow.providers.docker.operators.docker import DockerOperator
 
 from utilities import create_dbt_model_task, create_spark_task
 
+
 with DAG(
     dag_id="ingestion_dag",
     start_date=datetime(2024, 1, 1),
@@ -16,12 +17,15 @@ with DAG(
     max_active_tasks=3,
 ) as ingestion_dag:
 
-    spark_task = create_spark_task(task_id="ingestion")
+    taxi_zone_ingestion_task = create_spark_task(task_id="dim_taxi_zones")
+    taxi_trip_zone_view_task = create_dbt_model_task(schema='bronze', model_name='taxi_trip_zone')
+    taxi_zone_ingestion_task >> taxi_trip_zone_view_task
 
+    ingestion_task = create_spark_task(task_id="ingestion")
     bronze_models = [
         "vw_fhv_trip_data",
         "vw_green_trip_data",
         "vw_yellow_trip_data",
     ]
     bronze_tasks = [create_dbt_model_task(schema='bronze', model_name=model) for model in bronze_models]
-    spark_task >> bronze_tasks
+    ingestion_task >> bronze_tasks

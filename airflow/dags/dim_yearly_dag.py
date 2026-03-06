@@ -3,11 +3,6 @@ from docker.types import Mount
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
 
-from constants import (
-    COMMON_DOCKER_ARGS,
-    HOST_PROJECT_PATH,
-    ENVIRONMENT_DOCKER_ARGS
-)
 from utilities import create_dbt_model_task
 
 

@@ -1,90 +1,165 @@
-## 🐳 Local Development — Build & Run
+# NYC Taxi Data Pipeline (Local Lakehouse)
 
-This project runs a complete lakehouse-style data platform locally using **Docker Compose**.
+![Docker](https://img.shields.io/badge/docker-compose-blue)
+![Spark](https://img.shields.io/badge/apache-spark-orange)
+![dbt](https://img.shields.io/badge/dbt-transformations-orange)
+![Airflow](https://img.shields.io/badge/apache-airflow-red)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-Included services:
+A local lakehouse-style data platform that ingests NYC Taxi datasets from S3,
+processes them with Apache Spark, and builds curated analytics tables using dbt.
+The entire stack runs locally using Docker Compose, making it suitable
+for development, experimentation, and data engineering portfolio projects.
 
-* Apache Airflow — orchestration
-* Apache Spark — ingestion & compute
-* dbt — transformation (Silver & Gold)
-* Hive Metastore — table metadata
-* MinIO — S3-compatible object storage
+## What’s included
+
+- **Apache Airflow** — orchestration and scheduling
+- **Apache Spark** — ingestion and compute
+- **dbt** — transformations (Silver/Gold) and tests
+- **Hive Metastore (MySQL-backed)** — table metadata persistence
 
 ---
 
-## 🚀 First-time setup
+## Motivation
 
-Create a local directory for warehouse data if not exists:
+The purpose of this project is to demonstrate practical experience with 
+modern data engineering tools by implementing a complete local data platform.
+
+It showcases a **lakehouse-style data pipeline** built with common production components:
+
+* distributed compute (**Apache Spark**)
+* workflow orchestration (**Apache Airflow**)
+* transformation layer (**dbt**)
+* metadata management (**Hive Metastore**)
+
+The stack mirrors real-world data engineering architectures while 
+remaining lightweight enough to run locally via Docker.
+
+---
+
+## Architecture (high level)
+
+1. **Ingestion (Spark jobs)** loads raw datasets into the **Bronze** layer.
+2. **Transformations (dbt)** build curated **Silver** (staging/intermediate) and **Gold** (facts/marts) models.
+3. **Airflow** coordinates execution and dependencies between ingestion and transformation steps.
+
+---
+
+## Architecture Diagram
+
+![Architecture Diagram](docs/architecture.png)
+
+---
+
+## Data Source (AWS S3)
+
+This project uses Parquet datasets obtained from the official
+NYC Taxi & Limousine Commission (TLC) Trip Record Data portal:
+
+https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+
+### Dataset Coverage
+
+* **Years:** 2020–2024
+* **Format:** Parquet
+* **Source Storage:** AWS S3
+
+The raw NYC TLC datasets are stored as **Parquet files in an AWS S3 bucket**.
+
+Access is provided via a dedicated **IAM user** with a **read-only policy scoped to a single bucket** 
+(principle of the least privilege).
+The pipeline uses these credentials to read Parquet objects from S3 during the ingestion process.
+
+### Configure S3 Credentials
+
+1. Request (or create) **IAM access keys** for the read-only user.
+2. Add the credentials to your `.env` file (based on `.env.example`).
+3. Keep the credentials local and **never commit them to the repository**.
+
+> This repository does **not include any credentials**. 
+> Use environment variables or a proper secrets management solution for production deployments.
+
+---
+
+## Project Structure
+
+The repository is organized as follows:
+
+```
+├── airflow/
+│   └── dags/                    # Airflow DAG definitions
+│
+├── dbt/
+│   ├── models/                  # Bronze / Silver / Gold models
+│   ├── macros/                  # dbt macros
+│   └── tests/                   # dbt tests
+│
+├── src/
+│   └── jobs/                    # Spark bootstrap / ingestion / taxi_zones jobs
+│
+├── scripts/
+│   └── download-drivers.sh      # JDBC drivers for Hive metastore
+│
+├── warehouse/                   # Local lakehouse storage
+│
+├── docker/                      # Dockerfiles
+│
+├── requirements/                # Python requirements for every docker container
+│
+├── .env.example                 # Environment variables template
+└── docker-compose.yml           # Platform services
+```
+
+---
+
+## Prerequisites
+
+- Docker + Docker Compose
+- Git
+- Unix-like shell (macOS/Linux). The project was built on macOS but should work on Linux as well.
+
+---
+
+## Quickstart (first-time setup)
 
 ```bash
 # Clone the repo
 git clone https://github.com/evgeni-velikov/nyc-taxi-data-pipeline.git
 cd nyc-taxi-data-pipeline
 
-# Download drivers
+# Download drivers (required for metastore connectivity)
 ./scripts/download-drivers.sh
 
-# Create warehouse directory
-mkdir warehouse
+# Local warehouse directory (mounted into containers)
+mkdir -p warehouse
 
-# Build the Docker images
+# Environment variables (add your S3 IAM credentials here as well)
+cp .env.example .env
+
+# Build images and start the platform
 docker compose build
-
-# Run
 docker compose up -d
 
-# Wait ~40-50 seconds and check the containers
+# Wait ~40-50 seconds and check containers
 docker-compose ps
-
-# Test dbt connection
-docker compose run --rm dbt dbt debug
 ```
 
-This step is required only once.
+The setup steps above are typically required only once (unless you wipe volumes).
 
 ---
 
-## ▶️ Start the platform
+## Start / stop
 
 After the initial setup:
 
 ```bash
 docker compose up -d
+docker compose down
 ```
 
 ---
 
-## 🔄 Reset environment (clean state)
-
-Remove containers, volumes, and rebuild everything:
-
-```bash
-docker compose down -v
-docker compose build
-docker compose up -d
-```
-
-Use this if metadata, Spark state, or storage becomes inconsistent.
-
----
-
-## 🌐 Access UIs
-
-* **Airflow UI:** http://localhost:8081
-* **Spark Master UI:** http://localhost:8080
-* **MinIO Console:** http://localhost:9001
-
-**Airflow default credentials**
-
-```
-admin / admin
-```
-
-Spark and MinIO UIs are primarily used for debugging and data inspection.
-
----
-
-## ✅ Verify dbt Connection
+## Verify dbt Connection
 
 After the platform is running, verify that dbt can connect to Spark.
 
@@ -102,12 +177,66 @@ If successful, the transformation layer is correctly configured.
 
 ---
 
-## ▶️ Run a Model (Smoke Test)
+## Reset environment (clean state)
 
-Execute a single model to validate end-to-end execution:
+Use this if metadata/storage becomes inconsistent, or you want a full reset.
 
 ```bash
-docker compose run --rm dbt dbt run --select <model_name>
+docker compose down -v
+docker compose build
+docker compose up -d
+```
+
+---
+
+## Access UIs
+
+* **Airflow UI:** http://localhost:8081
+* **Spark Master UI:** http://localhost:8080
+
+**Airflow default credentials**
+```
+username: admin 
+password: admin
+```
+
+## Airflow DAGs
+
+This project orchestrates ingestion and transformations via Airflow DAGs located in `airflow/dags/`.
+
+Typical flow:
+
+- **bootstrap DAG**: one-time initialization tasks (project-specific)
+- **ingestion DAG**: loads raw NYC Taxi datasets into the Bronze layer
+- **transformation DAG**: runs dbt freshness checks and builds Silver/Gold models
+- **dim_yearly DAG**: builds/refreshes time-based dimensions (project-specific)
+
+---
+
+## dbt project
+
+dbt code lives under `dbt/`.
+
+### Layers
+
+- **Bronze**: source-aligned views over ingested raw tables
+- **Silver**: cleaned/standardized staging + intermediate models
+- **Gold**: facts and marts for analytics/BI
+
+### Common commands
+
+Before running dbt models, make sure the **Bronze** layer is available:
+
+1. Open **Airflow UI**: http://localhost:8081
+2. Trigger **`bootstrap_dag`** (one-time initialization of Bronze tables)
+3. Trigger **`ingestion_dag`** (loads new raw data into Bronze, if applicable)
+
+Then run dbt:
+
+```bash
+docker compose run --rm dbt dbt run --select stg_fhv_trips
+# or
+docker compose run --rm dbt dbt build --select stg_fhv_trips
 ```
 
 Successful execution confirms:
@@ -116,47 +245,59 @@ Successful execution confirms:
 * dbt can run transformations
 * Tables are created in the target schema
 
----
-
-## 🔁 Incremental Check
+## Incremental Check
 
 Run dbt twice:
 
 ```bash
-docker compose run --rm dbt dbt run
-docker compose run --rm dbt dbt run
+docker compose run --rm dbt dbt run --select stg_fhv_trips
+docker compose run --rm dbt dbt run --select stg_fhv_trips
 ```
 
-The second run should be faster and process only new data, confirming incremental behavior.
+---
+
+## Troubleshooting
+
+### dbt cannot connect to Spark (Thrift)
+- Ensure the platform is up: `docker compose ps`
+- Re-run: `docker compose run --rm dbt dbt debug`
+- If Spark Thrift is still initializing, wait ~30–60 seconds and retry.
+
+### Metastore / schema issues
+If tables exist but queries fail or state is inconsistent:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
 
 ---
 
-## 🧱 Platform Overview
+### Connect to Spark SQL (via Spark Thrift Server)
 
-Pipeline flow:
+To open a Spark SQL interactive session inside the running container:
 
-**Ingestion (Spark)** → Bronze (object storage)
-**Transformation (dbt)** → Silver → Gold
-**Orchestration (Airflow)** coordinates execution
+```bash
+docker compose exec spark-thrift spark-sql
+```
 
----
+This command executes the `spark-sql` CLI inside the `spark-thrift` container, 
+allowing you to run Spark SQL queries directly against the configured Spark environment.
 
-## 🧠 Notes
+After connecting, you can execute SQL queries such as:
 
-* Airflow manages scheduling, dependencies, and retries
-* Spark performs ingestion and heavy transformations
-* dbt defines transformation logic and lineage
-* MinIO provides S3-compatible storage for local development
-* Hive Metastore persists table definitions across runs
+```sql
+SHOW DATABASES;
+USE silver;
+SHOW TABLES;
+SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
+```
 
-This setup mirrors a typical production lakehouse architecture while remaining lightweight for local development.
+## Future Improvements
 
----
+Possible extensions of this project:
 
-## 🧪 Development Tips
-
-* Rebuild images after Dockerfile changes
-* Use `dbt debug` as the primary health check
-* Monitor Spark UI for parallel jobs and resource usage
-* Use incremental models to avoid full recomputation
-* Reset the environment if schema or storage becomes inconsistent
+- extend data quality validation with additional **dbt tests** (beyond current `not_null` and `unique` checks)
+- introduce **unit tests for transformation logic** to validate business rules
+- implement automated **data freshness monitoring**
+- deploy the pipeline to a **cloud environment**

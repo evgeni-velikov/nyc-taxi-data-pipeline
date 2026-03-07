@@ -13,15 +13,15 @@ models:
   nyc_taxi_data_pipeline:
     +file_format: delta
 
-    bronzes:
+    bronze:
       +tags: ['bronze']
       +materialized: view
       schema: bronze
-    silvers:
+    silver:
       +tags: ['silver']
       +materialized: incremental
       schema: silver
-    golds:
+    gold:
       +tags: ['gold']
       schema: gold
 

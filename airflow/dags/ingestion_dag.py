@@ -18,7 +18,7 @@ with DAG(
 ) as ingestion_dag:
 
     taxi_zone_ingestion_task = create_spark_task(task_id="dim_taxi_zones")
-    taxi_trip_zone_view_task = create_dbt_model_task(schema='bronze', model_name='taxi_trip_zone')
+    taxi_trip_zone_view_task = create_dbt_model_task(schema='bronze', model_name='vw_taxi_trip_zones')
     taxi_zone_ingestion_task >> taxi_trip_zone_view_task
 
     ingestion_task = create_spark_task(task_id="ingestion")

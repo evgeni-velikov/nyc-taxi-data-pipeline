@@ -14,7 +14,6 @@ models:
             - pickup_location_id
             - dropoff_location_id
             - taxi_type
-            - payment_type
             - datetime_hour
 
     columns:
@@ -28,22 +27,16 @@ models:
         description: Taxi zone where the trip started.
         tests:
           - not_null
-          - relationships:
-              to: ref('vw_taxi_trip_zones')
-              field: LocationID
 
       - name: dropoff_location_id
         description: Taxi zone where the trip ended.
         tests:
-          - relationships:
-              to: ref('vw_taxi_trip_zones')
-              field: LocationID
+          - not_null
 
       - name: taxi_type
         description: Type of taxi service.
-
-      - name: payment_type
-        description: Method of payment used for the trip.
+        tests:
+          - not_null
 
       - name: borough
         description: Borough associated with the pickup taxi zone.

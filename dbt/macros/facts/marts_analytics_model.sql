@@ -23,7 +23,7 @@
         SELECT
             {% for col in grain_columns %}
             fact.{{ col }},
-            {% endfor %},
+            {% endfor %}
 
             zones.Borough AS borough,
             zones.Zone AS zone,

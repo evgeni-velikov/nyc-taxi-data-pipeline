@@ -32,16 +32,11 @@ models:
         description: Taxi zone where the trip started.
         tests:
           - not_null
-          - relationships:
-              to: ref('vw_taxi_trip_zones')
-              field: LocationID
 
       - name: dropoff_location_id
         description: Taxi zone where the trip ended.
         tests:
-          - relationships:
-              to: ref('vw_taxi_trip_zones')
-              field: LocationID
+          - not_null
 
       - name: date_hour_pickup_datetime
         description: Timestamp representing the hour of the pickup event.

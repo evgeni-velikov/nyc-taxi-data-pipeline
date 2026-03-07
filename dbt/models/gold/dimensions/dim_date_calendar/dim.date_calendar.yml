@@ -3,122 +3,130 @@ version: 2
 models:
   - name: dim_date_calendar
     description: >
-      Date dimension table generated using a continuous date spine
-      between 2010-01-01 and 2050-12-31. Provides standard calendar
-      attributes as well as fiscal calendar fields where the fiscal
-      year starts in April. Useful for time-based analytics, reporting,
-      and joining fact tables to a standardized calendar dimension.
-
+      Dimension table with one row per hour for every day between 2010-01-01 and 2050-12-31.
+      Built using dbt_utils.date_spine crossed with an hours sequence.
     config:
       tags: ['dimension', 'calendar', 'date']
 
     columns:
-
-      # =========================
-      # Primary Key
-      # =========================
-
-      - name: date_key
-        description: "Surrogate key for the date in YYYYMMDD integer format."
-        data_type: int
-        tests:
-          - not_null
-          - unique
-
-      # =========================
-      # Calendar Date
-      # =========================
-
       - name: date
-        description: "Actual calendar date."
+        description: Calendar date (without time component).
         data_type: date
         tests:
           - not_null
+
+      - name: datetime_hour
+        description: Timestamp truncated to the hour (e.g. 2024-03-15 14:00:00).
+        data_type: timestamp
+        tests:
+          - not_null
           - unique
 
-      # =========================
-      # Standard Calendar Attributes
-      # =========================
+      - name: date_key
+        description: Integer surrogate key in yyyyMMdd format (e.g. 20240315).
+        data_type: int
+        tests:
+          - not_null
+
+      - name: hour_key
+        description: Big-integer surrogate key in yyyyMMddHH format (e.g. 2024031514).
+        data_type: bigint
+        tests:
+          - not_null
+          - unique
 
       - name: year
-        description: "Calendar year of the date."
+        description: Calendar year (e.g. 2024).
         data_type: int
         tests:
           - not_null
 
       - name: quarter
-        description: "Calendar quarter of the date (1–4)."
+        description: Calendar quarter (1–4).
         data_type: int
         tests:
           - not_null
           - accepted_values:
-              arguments:
-                values: [1, 2, 3, 4]
+              values: [1, 2, 3, 4]
 
       - name: month
-        description: "Month number within the year (1–12)."
+        description: Calendar month number (1–12).
         data_type: int
         tests:
           - not_null
           - accepted_values:
-              arguments:
-                values: [1,2,3,4,5,6,7,8,9,10,11,12]
+              values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
       - name: month_name
-        description: "Full textual month name (e.g., January, February)."
+        description: Full month name in English (e.g. March).
         data_type: string
         tests:
           - not_null
+          - accepted_values:
+              values:
+                - January
+                - February
+                - March
+                - April
+                - May
+                - June
+                - July
+                - August
+                - September
+                - October
+                - November
+                - December
 
       - name: week_of_year
-        description: "ISO week number within the year."
+        description: ISO week number within the year (1–53).
         data_type: int
         tests:
           - not_null
 
       - name: day
-        description: "Day of the month (1–31)."
+        description: Day of the month (1–31).
         data_type: int
         tests:
           - not_null
+
+      - name: hour
+        description: Hour of the day (0–23).
+        data_type: int
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
 
       - name: day_of_week
-        description: "Numeric representation of day of week (1–7 depending on SQL engine)."
+        description: >
+          Day of the week as returned by DAYOFWEEK (1 = Sunday, 7 = Saturday
+          in Spark/Databricks convention).
         data_type: int
         tests:
           - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5, 6, 7]
 
       - name: is_weekend
-        description: "Boolean flag indicating whether the date falls on a weekend."
+        description: True if the day falls on Saturday (7) or Sunday (1).
         data_type: boolean
         tests:
           - not_null
 
-      # =========================
-      # Fiscal Calendar Attributes
-      # =========================
-
       - name: fiscal_year
         description: >
-          Fiscal year derived from the calendar date. The fiscal year
-          starts in April and ends in March of the following year.
+          Fiscal year starting in April. Dates in Jan–Mar are assigned to the
+          previous calendar year (e.g. 2024-02-01 → fiscal year 2023).
         data_type: int
         tests:
           - not_null
 
       - name: fiscal_quarter
         description: >
-          Fiscal quarter derived from the fiscal calendar where
-          Q1 = Apr–Jun, Q2 = Jul–Sep, Q3 = Oct–Dec, Q4 = Jan–Mar.
+          Fiscal quarter (1–4) where Q1 = Apr–Jun, Q2 = Jul–Sep,
+          Q3 = Oct–Dec, Q4 = Jan–Mar.
         data_type: int
         tests:
           - not_null
           - accepted_values:
-              arguments:
-                values: [1, 2, 3, 4]
-
-    tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - date
-            - date_key
+              values: [1, 2, 3, 4]

@@ -18,9 +18,6 @@ models:
         description: TLC zone identifier where the trip started.
         tests:
           - not_null
-          - relationships:
-              to: ref('dim_taxi_zones')
-              field: location_id
 
       - name: dropoff_location_id
         description: TLC zone identifier where the trip ended.

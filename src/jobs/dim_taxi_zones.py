@@ -5,12 +5,14 @@ from src.common.utils import read_file
 
 
 def get_taxi_zones(spark: SparkSession, config: Config):
+    spark.sql(f"USE SCHEMA {config.bronze_schema}")
+
     file_path = f"{config.raw_folder}/taxi_zones.csv"
     df = read_file(
         spark=spark, path=file_path, file_format="csv",
         options={"header": "true", "inferSchema": "true"}
     )
-    table = f"{config.catalog_name}.{config.gold_schema}.taxi_trip_zones"
+    table = f"{config.catalog_name}.{config.bronze_schema}.taxi_trip_zones"
 
     (
         df.write.format("delta")

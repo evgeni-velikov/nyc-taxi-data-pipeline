@@ -5,6 +5,5 @@ SELECT
     LocationID,
     Borough,
     Zone,
-    service_zone,
-    processing_time
+    service_zone
 FROM {{ source('bronze', 'taxi_trip_zones') }}

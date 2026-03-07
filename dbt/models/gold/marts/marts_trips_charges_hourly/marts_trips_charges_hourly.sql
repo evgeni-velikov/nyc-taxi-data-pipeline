@@ -13,7 +13,6 @@
     'pickup_location_id',
     'dropoff_location_id',
     'taxi_type',
-    'payment_type',
 ] %}
 {% set fact_columns = [
     'airport_fee',

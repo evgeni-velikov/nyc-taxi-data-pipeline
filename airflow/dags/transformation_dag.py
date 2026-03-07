@@ -15,11 +15,12 @@ fhv_dataset = Dataset("bronze_fhv_trip_data")
 green_dataset = Dataset("bronze_green_trip_data")
 yellow_dataset = Dataset("bronze_yellow_trip_data")
 taxi_trip_zone = Dataset("bronze_taxi_trip_zone")
+date_calendar = Dataset("gold_dim_date_calendar")
 
 with DAG(
     dag_id="transformation_dag",
     start_date=datetime(2024, 1, 1),
-    schedule=[fhv_dataset, green_dataset, yellow_dataset],
+    schedule=[fhv_dataset, green_dataset, yellow_dataset, taxi_trip_zone, date_calendar],
     catchup=False,
     tags=["dbt", "transformation", "silver", "gold"],
     max_active_runs=1,
@@ -54,5 +55,13 @@ with DAG(
         ]
 
         stg_fhv_trips >> fact_zone_activity_hourly
+
+        marts_trips_charges_hourly = create_dbt_model_task("gold", "marts_trips_charges_hourly")
+        marts_trips_revenue_hourly = create_dbt_model_task("gold", "marts_trips_revenue_hourly")
+        marts_trips_zone_activity_hourly = create_dbt_model_task("gold", "marts_trips_zone_activity_hourly")
+
+        fact_zone_activity_hourly >> marts_trips_zone_activity_hourly
+        fact_revenue_hourly >> marts_trips_revenue_hourly
+        fact_charges_hourly >> marts_trips_charges_hourly
 
     silver_group >> gold_group

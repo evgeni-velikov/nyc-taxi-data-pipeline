@@ -26,12 +26,8 @@ import_stg_taxi_trips AS (
     SELECT *,
         DATE_TRUNC('HOUR', pickup_datetime) AS date_hour_pickup_datetime
     FROM {{ ref('stg_taxi_trips') }}
-    WHERE 1=1
     {% if is_incremental() %}
-    AND partition_date >= date_sub(
-        (SELECT max_partition_date FROM get_max_partition_date),
-        1
-    )
+    WHERE partition_date >= max_partition_date
     {% endif %}
 ),
 

@@ -8,7 +8,7 @@
         ],
         incremental_strategy='merge',
         partition_by=['metric_name', 'partition_date'],
-        cluster_by=['vendor_id', 'taxi_type']
+        cluster_by=['vendor_id', 'taxi_type', 'dwh_updated_at']
     )
 }}
 

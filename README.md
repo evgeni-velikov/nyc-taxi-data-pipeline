@@ -11,13 +11,6 @@ processes them with Apache Spark, and builds curated analytics tables using dbt.
 The entire stack runs locally using Docker Compose, making it suitable
 for development, experimentation, and data engineering portfolio projects.
 
-## What’s included
-
-- **Apache Airflow** — orchestration and scheduling
-- **Apache Spark** — ingestion and compute
-- **dbt** — transformations (Silver/Gold) and tests
-- **Hive Metastore (MySQL-backed)** — table metadata persistence
-
 ---
 
 ## Motivation
@@ -37,17 +30,26 @@ remaining lightweight enough to run locally via Docker.
 
 ---
 
-## Architecture (high level)
+## What’s included
 
-1. **Ingestion (Spark jobs)** loads raw datasets into the **Bronze** layer.
-2. **Transformations (dbt)** build curated **Silver** (staging/intermediate) and **Gold** (facts/marts) models.
-3. **Airflow** coordinates execution and dependencies between ingestion and transformation steps.
+- **Apache Airflow** — orchestration and scheduling
+- **Apache Spark** — ingestion and compute
+- **dbt** — transformations (Silver/Gold) and tests
+- **Hive Metastore (MySQL-backed)** — table metadata persistence
 
 ---
 
 ## Architecture Diagram
 
 ![Architecture Diagram](docs/architecture.png)
+
+---
+
+## Architecture (high level)
+
+1. **Ingestion (Spark jobs)** loads raw datasets into the **Bronze** layer.
+2. **Transformations (dbt)** build curated **Silver** (staging/intermediate) and **Gold** (facts/marts) models.
+3. **Airflow** coordinates execution and dependencies between ingestion and transformation steps.
 
 ---
 
@@ -295,9 +297,25 @@ SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
 
 ## Future Improvements
 
-Possible extensions of this project:
+Possible extensions and optimizations of this project:
 
+### Data Quality
 - extend data quality validation with additional **dbt tests** (beyond current `not_null` and `unique` checks)
 - introduce **unit tests for transformation logic** to validate business rules
-- implement automated **data freshness monitoring**
-- deploy the pipeline to a **cloud environment**
+
+### Performance & Modeling
+- split `taxi_trips_unpivot` into **3 separate models by metric group** (charges, revenue, zone activity)
+  to enable simpler `partition_by=['partition_date']` and eliminate the need for intermediate fact tables
+
+### Marts & Serving Layer
+- convert **marts models from `materialized='table'` to `materialized='view'`** once migrated to a columnar
+  store — currently materialized as tables due to Spark/Hive limitations, but on Snowflake views
+  over fact tables are sufficient and eliminate redundant storage and processing
+- implement a **multi-engine serving pattern**: marts remain as views in Spark/Hive (zero storage, zero processing),
+  and are pushed to **Snowflake as clustered tables** for BI tooling — Spark handles heavy incremental
+  compute, Snowflake handles fast analytical queries
+
+### Infrastructure
+- migrate serving layer to **Snowflake** for optimized query performance on marts and BI tooling
+- deploy the pipeline to a **cloud environment** (e.g. AWS EMR + Glue + MWAA)
+- add **data alerting** (e.g. anomaly detection on metric values or row counts per partition)

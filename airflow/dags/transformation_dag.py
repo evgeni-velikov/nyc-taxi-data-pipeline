@@ -32,36 +32,30 @@ with DAG(
 
     freshness = create_dbt_freshness_task()
 
-    # Silver
-    with TaskGroup("silver") as silver_group:
-        stg_fhv_trips = create_dbt_model_task("silver", "stg_fhv_trips")
-        stg_taxi_trips = create_dbt_model_task("silver", "stg_taxi_trips")
-        taxi_trips_unpivot = create_dbt_model_task("silver", "taxi_trips_unpivot")
+    stg_fhv_trips = create_dbt_model_task("silver", "stg_fhv_trips")
+    stg_taxi_trips = create_dbt_model_task("silver", "stg_taxi_trips")
+    taxi_trips_unpivot = create_dbt_model_task("silver", "taxi_trips_unpivot")
 
-        stg_taxi_trips >> taxi_trips_unpivot
+    stg_taxi_trips >> taxi_trips_unpivot
 
     freshness >> [stg_fhv_trips, stg_taxi_trips]
 
-    # Gold
-    with TaskGroup("gold") as gold_group:
-        fact_charges_hourly = create_dbt_model_task("gold", "fact_charges_hourly")
-        fact_revenue_hourly = create_dbt_model_task("gold", "fact_revenue_hourly")
-        fact_zone_activity_hourly = create_dbt_model_task("gold", "fact_zone_activity_hourly")
+    fact_charges_hourly = create_dbt_model_task("gold", "fact_charges_hourly")
+    fact_revenue_hourly = create_dbt_model_task("gold", "fact_revenue_hourly")
+    fact_zone_activity_hourly = create_dbt_model_task("gold", "fact_zone_activity_hourly")
 
-        taxi_trips_unpivot >> [
-            fact_charges_hourly,
-            fact_revenue_hourly,
-            fact_zone_activity_hourly,
-        ]
+    taxi_trips_unpivot >> [
+        fact_charges_hourly,
+        fact_revenue_hourly,
+        fact_zone_activity_hourly,
+    ]
 
-        stg_fhv_trips >> fact_zone_activity_hourly
+    stg_fhv_trips >> fact_zone_activity_hourly
 
-        marts_trips_charges_hourly = create_dbt_model_task("gold", "marts_trips_charges_hourly")
-        marts_trips_revenue_hourly = create_dbt_model_task("gold", "marts_trips_revenue_hourly")
-        marts_trips_zone_activity_hourly = create_dbt_model_task("gold", "marts_trips_zone_activity_hourly")
+    marts_trips_charges_hourly = create_dbt_model_task("gold", "marts_trips_charges_hourly")
+    marts_trips_revenue_hourly = create_dbt_model_task("gold", "marts_trips_revenue_hourly")
+    marts_trips_zone_activity_hourly = create_dbt_model_task("gold", "marts_trips_zone_activity_hourly")
 
-        fact_zone_activity_hourly >> marts_trips_zone_activity_hourly
-        fact_revenue_hourly >> marts_trips_revenue_hourly
-        fact_charges_hourly >> marts_trips_charges_hourly
-
-    silver_group >> gold_group
+    fact_zone_activity_hourly >> marts_trips_zone_activity_hourly
+    fact_revenue_hourly >> marts_trips_revenue_hourly
+    fact_charges_hourly >> marts_trips_charges_hourly

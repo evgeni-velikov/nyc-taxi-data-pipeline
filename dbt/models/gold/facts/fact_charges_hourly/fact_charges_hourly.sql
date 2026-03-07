@@ -12,6 +12,7 @@
     config(
         unique_key = unique_keys,
         incremental_strategy='merge',
+        materialized='incremental',
         cluster_by=['vendor_id', 'pickup_location_id', 'dropoff_location_id', 'date_hour_pickup_datetime']
     )
 }}

@@ -1,10 +1,12 @@
 services:
 
   # ---------------------------
-  # Mysql (Hive metastore)
+  # MySQL (Hive metastore) - LOCAL only
   # ---------------------------
   mysql:
     image: mysql:8
+    profiles:
+      - local
     env_file:
       - .env
     ports:
@@ -12,6 +14,21 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
+  # ---------------------------
+  # Airflow metadata DB - LOCAL only
+  # ---------------------------
+  airflow-postgres:
+    image: postgres:15
+    profiles:
+      - local
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # ---------------------------
+  # Hive metastore
+  # ---------------------------
   hive-metastore:
     image: apache/hive:3.1.3
     volumes:
@@ -28,9 +45,6 @@ services:
         /opt/hive/bin/hive --service metastore
     env_file:
       - .env
-    depends_on:
-      mysql:
-        condition: service_started
     ports:
       - "9083:9083"
     healthcheck:
@@ -39,6 +53,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    restart: always
 
   # ---------------------------
   # Spark cluster
@@ -58,6 +73,7 @@ services:
     ports:
       - "7077:7077"
       - "8080:8080"
+    restart: always
 
   spark-worker:
     user: "0:0"
@@ -72,6 +88,7 @@ services:
       - spark-master
     env_file:
       - .env
+    restart: always
 
   spark-thrift:
     user: "0:0"
@@ -102,6 +119,7 @@ services:
         condition: service_started
       hive-metastore:
         condition: service_healthy
+    restart: always
 
   # ---------------------------
   # dbt
@@ -120,22 +138,12 @@ services:
       - .env
 
   # ---------------------------
-  # Airflow metadata DB
-  # ---------------------------
-  airflow-postgres:
-    image: postgres:15
-    env_file:
-      - .env
-
-  # ---------------------------
-  # Airflow webserver
+  # Airflow init
   # ---------------------------
   airflow-init:
     build:
       context: .
       dockerfile: docker/airflow/Dockerfile
-    depends_on:
-      - airflow-postgres
     env_file:
       - .env
     volumes:
@@ -150,6 +158,11 @@ services:
       --lastname admin \
       --role Admin \
       --email admin@example.com"
+    restart: "no"
+
+  # ---------------------------
+  # Airflow webserver
+  # ---------------------------
   airflow:
     build:
       context: .
@@ -169,12 +182,11 @@ services:
     depends_on:
       airflow-init:
         condition: service_completed_successfully
-      airflow-postgres:
-        condition: service_started
       spark-master:
         condition: service_started
       spark-thrift:
         condition: service_started
+    restart: always
 
   # ---------------------------
   # Airflow scheduler
@@ -198,9 +210,10 @@ services:
         condition: service_completed_successfully
       airflow:
         condition: service_started
+    restart: always
 
   # ---------------------------
-  # Airflow triggerer (modern)
+  # Airflow triggerer
   # ---------------------------
   airflow-triggerer:
     build:
@@ -221,9 +234,12 @@ services:
         condition: service_completed_successfully
       airflow:
         condition: service_started
+    restart: always
 
 volumes:
   mysql-data:
+  postgres-data:
+
 networks:
   default:
     name: nyc-taxi-data-pipeline

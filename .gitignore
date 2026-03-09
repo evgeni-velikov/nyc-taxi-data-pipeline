@@ -17,6 +17,7 @@ warehouse
 warehouse/
 src/test.py
 .env
+.env.aws
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

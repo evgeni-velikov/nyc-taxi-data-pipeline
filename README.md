@@ -1,4 +1,4 @@
-# NYC Taxi Data Pipeline (Local Lakehouse)
+# NYC Taxi Data Pipeline
 
 ![Docker](https://img.shields.io/badge/docker-compose-blue)
 ![Spark](https://img.shields.io/badge/apache-spark-orange)
@@ -6,10 +6,10 @@
 ![Airflow](https://img.shields.io/badge/apache-airflow-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A local lakehouse-style data platform that ingests NYC Taxi datasets from S3,
+A lakehouse-style data pipeline that ingests NYC Taxi datasets from S3,
 processes them with Apache Spark, and builds curated analytics tables using dbt.
-The entire stack runs locally using Docker Compose, making it suitable
-for development, experimentation, and data engineering portfolio projects.
+The stack runs both locally via Docker Compose and on AWS (EC2 + RDS + S3),
+making it suitable for development, experimentation, and data engineering portfolio projects.
 
 ---
 
@@ -50,6 +50,7 @@ remaining lightweight enough to run locally via Docker.
 1. **Ingestion (Spark jobs)** loads raw datasets into the **Bronze** layer.
 2. **Transformations (dbt)** build curated **Silver** (staging/intermediate) and **Gold** (facts/marts) models.
 3. **Airflow** coordinates execution and dependencies between ingestion and transformation steps.
+4. The platform can run both **locally** (Docker Compose) and on **AWS** (EC2 + RDS + S3 + IAM + VPC).
 
 ---
 
@@ -77,6 +78,7 @@ The pipeline uses these credentials to read Parquet objects from S3 during the i
 1. Request (or create) **IAM access keys** for the read-only user.
 2. Add the credentials to your `.env` file (based on `.env.example`).
 3. Keep the credentials local and **never commit them to the repository**.
+4. On AWS EC2: credentials are provided via IAM Instance Profile (no hardcoded keys required)
 
 > This repository does **not include any credentials**. 
 > Use environment variables or a proper secrets management solution for production deployments.
@@ -116,6 +118,7 @@ The repository is organized as follows:
 
 ## Prerequisites
 
+- AWS account (for S3 access)
 - Docker + Docker Compose
 - Git
 - Unix-like shell (macOS/Linux). The project was built on macOS but should work on Linux as well.
@@ -134,6 +137,7 @@ cd nyc-taxi-data-pipeline
 
 # Local warehouse directory (mounted into containers)
 mkdir -p warehouse
+sudo chmod 777 warehouse
 
 # Environment variables (add your S3 IAM credentials here as well)
 cp .env.example .env
@@ -144,6 +148,9 @@ docker compose up -d
 
 # Wait ~40-50 seconds and check containers
 docker-compose ps
+
+# Install dbt dependencies
+docker compose run --rm dbt dbt deps
 ```
 
 The setup steps above are typically required only once (unless you wipe volumes).
@@ -193,8 +200,13 @@ docker compose up -d
 
 ## Access UIs
 
+### Local Platform
 * **Airflow UI:** http://localhost:8081
 * **Spark Master UI:** http://localhost:8080
+
+### AWS Platform
+Airflow UI: http://<EC2-PUBLIC-IP>:8081
+Spark Master UI: http://<EC2-PUBLIC-IP>:8080
 
 **Airflow default credentials**
 ```
@@ -317,5 +329,5 @@ Possible extensions and optimizations of this project:
 
 ### Infrastructure
 - migrate serving layer to **Snowflake** for optimized query performance on marts and BI tooling
-- deploy the pipeline to a **cloud environment** (e.g. AWS EMR + Glue + MWAA)
+- migrate to AWS EMR + MWAA for production-grade deployment
 - add **data alerting** (e.g. anomaly detection on metric values or row counts per partition)

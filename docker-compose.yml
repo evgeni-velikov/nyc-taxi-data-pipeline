@@ -77,6 +77,8 @@ services:
 
   spark-worker:
     user: "0:0"
+    tmpfs:
+      - /tmp:size=4g
     build:
       context: .
       dockerfile: docker/spark/Dockerfile

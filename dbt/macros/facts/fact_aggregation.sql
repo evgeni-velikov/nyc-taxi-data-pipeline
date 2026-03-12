@@ -1,42 +1,34 @@
-{% macro fact_aggregation_model(metrics, grain_columns, max_dwh_condition=none) %}
+{% macro fact_aggregation_model(source_model, grain_columns, metric_columns, watermark_condition=none) %}
 
     {% if is_incremental() %}
     get_max_dwh_updated_at AS (
         SELECT MAX(max_dwh_updated_at) AS max_dwh_updated_at
         FROM {{ this }}
-        {% if max_dwh_condition is not none %}
-            WHERE {{ max_dwh_condition }}
+        {% if watermark_condition is not none %}
+        WHERE {{ watermark_condition }}
         {% endif %}
     ),
     {% endif %}
 
     import_source AS (
         SELECT *
-        FROM {{ ref('taxi_trips_unpivot') }}
-        WHERE metric_name IN ({{ "'" + metrics | join("', '") + "'" }})
+        FROM {{ ref(source_model) }}
         {% if is_incremental() %}
-        AND dwh_updated_at > (SELECT max_dwh_updated_at FROM get_max_dwh_updated_at)
+        WHERE dwh_updated_at > (SELECT max_dwh_updated_at FROM get_max_dwh_updated_at)
         {% endif %}
     ),
 
-    final_agg AS (
+    final AS (
         SELECT
             {% for col in grain_columns %}
-                {{ col }},
+            {{ col }},
             {% endfor %}
-
-            {% for metric in metrics %}
-                SUM(CASE WHEN metric_name = '{{ metric }}'
-                         THEN metric_value ELSE 0 END) AS {{ metric }},
+            {% for col in metric_columns %}
+            {{ col }},
             {% endfor %}
-
-            MAX(dwh_updated_at) AS max_dwh_updated_at,
+            dwh_updated_at AS max_dwh_updated_at,
             {{ timestamp_mock() }} AS dwh_updated_at
         FROM import_source
-        GROUP BY
-            {% for col in grain_columns %}
-                {{ loop.index }}{% if not loop.last %}, {% endif %}
-            {% endfor %}
     )
 
 {% endmacro %}

@@ -11,8 +11,8 @@
     {'name': 'total_congestion_surcharge',    'expr': 'SUM(congestion_surcharge)'},
     {'name': 'total_mta_tax',                 'expr': 'SUM(mta_tax)'},
     {'name': 'total_extra',                   'expr': 'SUM(extra)'},
-    {'name': 'total_airport_fee',             'expr': "SUM(IF(fee_type = 'airport', total_fee, 0))"},
-    {'name': 'total_ehail_fee',               'expr': "SUM(IF(fee_type = 'ehail', total_fee, 0))"},
+    {'name': 'total_airport_fee',             'expr': "SUM(COALESCE(IF(fee_type = 'airport', total_fee, 0), 0))"},
+    {'name': 'total_ehail_fee',               'expr': "SUM(COALESCE(IF(fee_type = 'ehail', total_fee, 0), 0))"},
 ] %}
 
 {{

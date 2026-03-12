@@ -144,7 +144,7 @@ cp .env.example .env
 
 # Build images and start the platform
 docker compose build
-docker compose up -d
+docker compose --profile local up -d
 
 # Wait ~40-50 seconds and check containers
 docker-compose ps
@@ -193,7 +193,7 @@ Use this if metadata/storage becomes inconsistent, or you want a full reset.
 ```bash
 docker compose down -v
 docker compose build
-docker compose up -d
+docker compose --profile local up -d
 ```
 
 ---
@@ -307,6 +307,12 @@ SHOW TABLES;
 SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
 ```
 
+## Design Decisions
+
+- **Split unpivot model by metric group**: `taxi_trips_unpivot` is split into 3 separate models
+  (`int_taxi_trips_charges`, `int_taxi_trips_revenue`, `int_taxi_trips_zone_activity`) to enable
+  simple `partition_by=['partition_date']` and avoid intermediate fact tables.
+
 ## Future Improvements
 
 Possible extensions and optimizations of this project:
@@ -314,10 +320,6 @@ Possible extensions and optimizations of this project:
 ### Data Quality
 - extend data quality validation with additional **dbt tests** (beyond current `not_null` and `unique` checks)
 - introduce **unit tests for transformation logic** to validate business rules
-
-### Performance & Modeling
-- split `taxi_trips_unpivot` into **3 separate models by metric group** (charges, revenue, zone activity)
-  to enable simpler `partition_by=['partition_date']` and eliminate the need for intermediate fact tables
 
 ### Marts & Serving Layer
 - convert **marts models from `materialized='table'` to `materialized='view'`** once migrated to a columnar

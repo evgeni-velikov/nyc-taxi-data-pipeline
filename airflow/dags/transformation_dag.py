@@ -34,9 +34,16 @@ with DAG(
 
     stg_fhv_trips = create_dbt_model_task("silver", "stg_fhv_trips")
     stg_taxi_trips = create_dbt_model_task("silver", "stg_taxi_trips")
-    taxi_trips_unpivot = create_dbt_model_task("silver", "taxi_trips_unpivot")
 
-    stg_taxi_trips >> taxi_trips_unpivot
+    int_taxi_trips_charges = create_dbt_model_task("silver", "int_taxi_trips_charges")
+    int_taxi_trips_revenue = create_dbt_model_task("silver", "int_taxi_trips_revenue")
+    int_taxi_trips_zone_activity = create_dbt_model_task("silver", "int_taxi_trips_zone_activity")
+
+    stg_taxi_trips >> [
+        int_taxi_trips_charges,
+        int_taxi_trips_revenue,
+        int_taxi_trips_zone_activity
+    ]
 
     freshness >> [stg_fhv_trips, stg_taxi_trips]
 
@@ -44,12 +51,9 @@ with DAG(
     fact_revenue_hourly = create_dbt_model_task("gold", "fact_revenue_hourly")
     fact_zone_activity_hourly = create_dbt_model_task("gold", "fact_zone_activity_hourly")
 
-    taxi_trips_unpivot >> [
-        fact_charges_hourly,
-        fact_revenue_hourly,
-        fact_zone_activity_hourly,
-    ]
-
+    int_taxi_trips_charges >> fact_charges_hourly
+    int_taxi_trips_revenue >> fact_revenue_hourly
+    int_taxi_trips_zone_activity >> fact_zone_activity_hourly
     stg_fhv_trips >> fact_zone_activity_hourly
 
     marts_trips_charges_hourly = create_dbt_model_task("gold", "marts_trips_charges_hourly")

@@ -1,16 +1,15 @@
 version: 2
 
 models:
-  - name: taxi_trips_unpivot
+  - name: int_taxi_trips_revenue
     description: >
-      Hourly aggregated taxi trips fact model in long (unpivoted) format.
-      Each row represents a single KPI metric (metric_name, metric_value)
-      for a specific combination of vendor, pickup/dropoff locations,
-      pickup hour, taxi type, payment type, rate code and trip type.
-      Supports incremental merge loading partitioned by partition_date.
+      Hourly aggregated taxi revenue metrics in wide (pivoted) format.
+      Each row represents a unique combination of vendor, pickup/dropoff locations,
+      pickup hour, taxi type and payment type. Partitioned by partition_date and
+      supports incremental merge loading.
 
     config:
-      tags: ['fact', 'hourly', 'unpivot']
+      tags: ['intermediate', 'hourly', 'revenue']
 
     columns:
 
@@ -56,59 +55,46 @@ models:
         tests:
           - not_null
 
-      - name: rate_code_id
-        description: "Rate code applied to the trip."
-        data_type: int
-        tests:
-          - not_null
-
-      - name: trip_type
-        description: "Trip type (street-hail or dispatch; nullable for yellow taxi)."
-        data_type: int
-
       # =========================
       # Partition Column
       # =========================
 
       - name: partition_date
-        description: "Partition date used for incremental loading (max partition_date from aggregated source rows)."
+        description: "Partition date used for incremental loading (max partition_date from source rows)."
         data_type: date
         tests:
           - not_null
 
       # =========================
-      # Metric Layer (Unpivot)
+      # Metrics
       # =========================
 
-      - name: metric_name
-        description: >
-          Name of the KPI metric. Possible values:
-          total_trips, total_improvement_surcharge, total_congestion_surcharge,
-          total_passenger_count, total_trip_distance, total_mta_tax, total_extra,
-          total_fare_amount, total_tip_amount, total_tolls_amount, total_amount,
-          total_airport_fee, total_ehail_fee.
-        data_type: string
+      - name: total_trips
+        description: "Total number of taxi trips."
+        data_type: bigint
         tests:
           - not_null
-          - accepted_values:
-              arguments:
-                values:
-                  - total_trips
-                  - total_improvement_surcharge
-                  - total_congestion_surcharge
-                  - total_passenger_count
-                  - total_trip_distance
-                  - total_mta_tax
-                  - total_extra
-                  - total_fare_amount
-                  - total_tip_amount
-                  - total_tolls_amount
-                  - total_amount
-                  - total_airport_fee
-                  - total_ehail_fee
 
-      - name: metric_value
-        description: "Aggregated metric value corresponding to metric_name."
+      - name: total_fare_amount
+        description: "Total fare amount aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_tip_amount
+        description: "Total tip amount aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_tolls_amount
+        description: "Total toll charges aggregated from taxi trips."
+        data_type: double
+        tests:
+          - not_null
+
+      - name: total_amount
+        description: "Total trip amount including fare, tips, tolls and surcharges."
         data_type: double
         tests:
           - not_null
@@ -132,6 +118,3 @@ models:
             - date_hour_pickup_datetime
             - taxi_type
             - payment_type
-            - rate_code_id
-            - trip_type
-            - metric_name

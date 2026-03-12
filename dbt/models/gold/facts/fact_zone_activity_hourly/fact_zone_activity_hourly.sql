@@ -1,47 +1,45 @@
-{% set metrics = [
-    'total_trips', 'total_passenger_count', 'total_trip_distance',
-] %}
-{% set unique_keys = [
-    'vendor_id', 'pickup_location_id', 'dropoff_location_id',
-    'date_hour_pickup_datetime', 'taxi_type',
-] %}
-
 {{
     config(
-        unique_key = unique_keys,
+        unique_key=[
+            'operator_id', 'operator_type', 'pickup_location_id', 'dropoff_location_id',
+            'date_hour_pickup_datetime', 'taxi_type',
+        ],
         incremental_strategy='merge',
         materialized='incremental',
-        cluster_by=['vendor_id', 'pickup_location_id', 'dropoff_location_id', 'date_hour_pickup_datetime']
+        cluster_by=['operator_id', 'pickup_location_id', 'dropoff_location_id', 'date_hour_pickup_datetime']
     )
 }}
 
-
 WITH
+
+-- Import
 
 import_stg_fhv_trips AS (
     SELECT * FROM {{ ref('stg_fhv_trips') }}
     {% if is_incremental() %}
-    WHERE
-        dwh_updated_at >= (
-            SELECT COALESCE(MAX(max_dwh_updated_at), TIMESTAMP '1900-01-01')
-            FROM {{ this }}
-            WHERE operator_type = 'dispatching_base'
-        )
-   {% endif %}
+    WHERE dwh_updated_at >= (
+        SELECT COALESCE(MAX(max_dwh_updated_at), TIMESTAMP '1900-01-01')
+        FROM {{ this }}
+        WHERE operator_type = 'dispatching_base'
+    )
+    {% endif %}
 ),
 
-{{
-    fact_aggregation_model(
-        metrics=metrics,
-        grain_columns=unique_keys,
-        max_dwh_condition="operator_type = 'vendor'"
+import_vendor AS (
+    SELECT * FROM {{ ref('int_taxi_trips_zone_activity') }}
+    {% if is_incremental() %}
+    WHERE dwh_updated_at > (
+        SELECT COALESCE(MAX(max_dwh_updated_at), TIMESTAMP '1900-01-01')
+        FROM {{ this }}
+        WHERE operator_type = 'vendor'
     )
-}},
+    {% endif %}
+),
 
 
 -- Logic
 
-fact_zone_activity_hourly_res AS (
+dispatching_base_agg AS (
     SELECT
         dispatching_base_id AS operator_id,
         'dispatching_base' AS operator_type,
@@ -55,8 +53,10 @@ fact_zone_activity_hourly_res AS (
         MAX(dwh_updated_at) AS max_dwh_updated_at,
         {{ timestamp_mock() }} AS dwh_updated_at
     FROM import_stg_fhv_trips
-    GROUP BY 1,3,4,5,6
-    UNION ALL
+    GROUP BY 1, 3, 4, 5, 6
+),
+
+vendor_agg AS (
     SELECT
         vendor_id AS operator_id,
         'vendor' AS operator_type,
@@ -67,12 +67,14 @@ fact_zone_activity_hourly_res AS (
         total_trips,
         total_passenger_count,
         total_trip_distance,
-        max_dwh_updated_at,
-        dwh_updated_at
-    FROM final_agg
+        dwh_updated_at AS max_dwh_updated_at,
+        {{ timestamp_mock() }} AS dwh_updated_at
+    FROM import_vendor
 )
 
 
 -- Result
 
-SELECT * FROM fact_zone_activity_hourly_res
+SELECT * FROM dispatching_base_agg
+UNION ALL
+SELECT * FROM vendor_agg

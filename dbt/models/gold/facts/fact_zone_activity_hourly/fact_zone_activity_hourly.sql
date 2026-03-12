@@ -14,13 +14,12 @@
         ],
         incremental_strategy='merge',
         materialized='incremental',
-        cluster_by=['operator_id', 'pickup_location_id', 'dropoff_location_id', 'date_hour_pickup_datetime']
+        partition_by=['pickup_date'],
+        cluster_by=['pickup_location_id', 'dropoff_location_id', 'operator_id']
     )
 }}
 
 WITH
-
--- Vendor import (macro generates get_max_dwh_updated_at, import_source, final CTEs)
 
 {{
     fact_aggregation_model(
@@ -34,7 +33,10 @@ WITH
 -- FHV dispatching base import
 
 import_stg_fhv_trips AS (
-    SELECT * FROM {{ ref('stg_fhv_trips') }}
+    SELECT
+        *,
+        DATE(pickup_datetime) AS pickup_date
+    FROM {{ ref('stg_fhv_trips') }}
     {% if is_incremental() %}
     WHERE dwh_updated_at >= (
         SELECT COALESCE(MAX(max_dwh_updated_at), TIMESTAMP '1900-01-01')
@@ -58,6 +60,7 @@ dispatching_base_agg AS (
         COUNT(*) AS total_trips,
         BIGINT(NULL) AS total_passenger_count,
         DOUBLE(NULL) AS total_trip_distance,
+        MAX(pickup_date) AS pickup_date,
         MAX(dwh_updated_at) AS max_dwh_updated_at,
         {{ timestamp_mock() }} AS dwh_updated_at
     FROM import_stg_fhv_trips
@@ -75,6 +78,7 @@ vendor_agg AS (
         total_trips,
         total_passenger_count,
         total_trip_distance,
+        pickup_date,
         max_dwh_updated_at,
         dwh_updated_at
     FROM final

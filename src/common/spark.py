@@ -21,6 +21,12 @@ def get_spark_session(app_name: str = "nyc-taxi") -> SparkSession:
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
         .config("spark.databricks.delta.schema.autoMerge.enabled", "true")
 
+        # Snowflake
+        .config("spark.jars.packages",
+            "net.snowflake:snowflake-jdbc:3.13.33,"
+            "net.snowflake:spark-snowflake_2.12:2.15.0-spark_3.5"
+        )
+
         # Warehouse
         .config("spark.sql.warehouse.dir", "/warehouse")
 

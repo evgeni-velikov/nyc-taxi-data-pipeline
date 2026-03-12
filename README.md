@@ -4,6 +4,7 @@
 ![Spark](https://img.shields.io/badge/apache-spark-orange)
 ![dbt](https://img.shields.io/badge/dbt-transformations-orange)
 ![Airflow](https://img.shields.io/badge/apache-airflow-red)
+![Snowflake](https://img.shields.io/badge/snowflake-serving-29B5E8)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A lakehouse-style data pipeline that ingests NYC Taxi datasets from S3,
@@ -313,6 +314,11 @@ SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
   (`int_taxi_trips_charges`, `int_taxi_trips_revenue`, `int_taxi_trips_zone_activity`) to enable
   simple `partition_by=['partition_date']` and avoid intermediate fact tables.
 
+- **Multi-engine serving pattern**: marts are materialized as `table` in Spark/Hive for incremental
+  compute, and pushed to **Snowflake as views** for BI tooling — Spark handles heavy transformations,
+  Snowflake handles fast analytical queries. Target-aware materialization is handled via `target.type`
+  in dbt config.
+
 ## Future Improvements
 
 Possible extensions and optimizations of this project:
@@ -321,15 +327,6 @@ Possible extensions and optimizations of this project:
 - extend data quality validation with additional **dbt tests** (beyond current `not_null` and `unique` checks)
 - introduce **unit tests for transformation logic** to validate business rules
 
-### Marts & Serving Layer
-- convert **marts models from `materialized='table'` to `materialized='view'`** once migrated to a columnar
-  store — currently materialized as tables due to Spark/Hive limitations, but on Snowflake views
-  over fact tables are sufficient and eliminate redundant storage and processing
-- implement a **multi-engine serving pattern**: marts remain as views in Spark/Hive (zero storage, zero processing),
-  and are pushed to **Snowflake as clustered tables** for BI tooling — Spark handles heavy incremental
-  compute, Snowflake handles fast analytical queries
-
 ### Infrastructure
-- migrate serving layer to **Snowflake** for optimized query performance on marts and BI tooling
 - migrate to AWS EMR + MWAA for production-grade deployment
 - add **data alerting** (e.g. anomaly detection on metric values or row counts per partition)

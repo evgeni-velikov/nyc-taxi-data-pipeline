@@ -1,10 +1,6 @@
-{{
-    config(
-        materialized='table',
-        partition_by=["date"],
-        cluster_by=["pickup_location_id", "dropoff_location_id", "vendor_id", "payment_type"]
-    )
-}}
+{{ config(materialized='view') }}
+
+{#        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "vendor_id"]#}
 
 {% set fact_table = 'fact_revenue_hourly' %}
 {% set avg_divide_col = 'total_trips' %}

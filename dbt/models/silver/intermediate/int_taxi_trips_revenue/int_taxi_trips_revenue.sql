@@ -3,6 +3,7 @@
     'pickup_location_id',
     'dropoff_location_id',
     'date_hour_pickup_datetime',
+    'DATE(date_hour_pickup_datetime) AS pickup_date',
     'type AS taxi_type',
     'payment_type',
 ] %}
@@ -22,8 +23,8 @@
             'date_hour_pickup_datetime', 'taxi_type', 'payment_type'
         ],
         incremental_strategy='merge',
-        partition_by=['partition_date'],
-        cluster_by=['vendor_id', 'taxi_type', 'dwh_updated_at']
+        partition_by=['pickup_date'],
+        cluster_by=['pickup_location_id', 'dropoff_location_id', 'vendor_id']
     )
 }}
 

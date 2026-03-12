@@ -1,3 +1,11 @@
+{% set grain_columns = [
+    'vendor_id', 'pickup_location_id', 'dropoff_location_id',
+    'date_hour_pickup_datetime', 'taxi_type',
+] %}
+{% set metric_columns = [
+    'total_trips', 'total_passenger_count', 'total_trip_distance',
+] %}
+
 {{
     config(
         unique_key=[
@@ -12,7 +20,18 @@
 
 WITH
 
--- Import
+-- Vendor import (macro generates get_max_dwh_updated_at, import_source, final CTEs)
+
+{{
+    fact_aggregation_model(
+        source_model='int_taxi_trips_zone_activity',
+        grain_columns=grain_columns,
+        metric_columns=metric_columns,
+        watermark_condition="operator_type = 'vendor'"
+    )
+}},
+
+-- FHV dispatching base import
 
 import_stg_fhv_trips AS (
     SELECT * FROM {{ ref('stg_fhv_trips') }}
@@ -21,17 +40,6 @@ import_stg_fhv_trips AS (
         SELECT COALESCE(MAX(max_dwh_updated_at), TIMESTAMP '1900-01-01')
         FROM {{ this }}
         WHERE operator_type = 'dispatching_base'
-    )
-    {% endif %}
-),
-
-import_vendor AS (
-    SELECT * FROM {{ ref('int_taxi_trips_zone_activity') }}
-    {% if is_incremental() %}
-    WHERE dwh_updated_at > (
-        SELECT COALESCE(MAX(max_dwh_updated_at), TIMESTAMP '1900-01-01')
-        FROM {{ this }}
-        WHERE operator_type = 'vendor'
     )
     {% endif %}
 ),
@@ -67,9 +75,9 @@ vendor_agg AS (
         total_trips,
         total_passenger_count,
         total_trip_distance,
-        dwh_updated_at AS max_dwh_updated_at,
-        {{ timestamp_mock() }} AS dwh_updated_at
-    FROM import_vendor
+        max_dwh_updated_at,
+        dwh_updated_at
+    FROM final
 )
 
 

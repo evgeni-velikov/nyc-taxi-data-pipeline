@@ -1,3 +1,20 @@
+{% set grain_columns = [
+    'vendor_id',
+    'pickup_location_id',
+    'dropoff_location_id',
+    'date_hour_pickup_datetime',
+    'type AS taxi_type',
+] %}
+{% set metrics = [
+    {'name': 'total_trips',                   'expr': 'COUNT(*)'},
+    {'name': 'total_improvement_surcharge',   'expr': 'SUM(improvement_surcharge)'},
+    {'name': 'total_congestion_surcharge',    'expr': 'SUM(congestion_surcharge)'},
+    {'name': 'total_mta_tax',                 'expr': 'SUM(mta_tax)'},
+    {'name': 'total_extra',                   'expr': 'SUM(extra)'},
+    {'name': 'total_airport_fee',             'expr': "SUM(IF(fee_type = 'airport', total_fee, 0))"},
+    {'name': 'total_ehail_fee',               'expr': "SUM(IF(fee_type = 'ehail', total_fee, 0))"},
+] %}
+
 {{
     config(
         materialized='incremental',
@@ -13,48 +30,6 @@
 
 WITH
 
--- Import
-
-{% if is_incremental() %}
-get_max_partition_date AS (
-    SELECT COALESCE(MAX(partition_date), DATE '1900-01-01') AS max_partition_date
-    FROM {{ this }}
-),
-{% endif %}
-
-import_stg_taxi_trips AS (
-    SELECT *,
-        DATE_TRUNC('HOUR', pickup_datetime) AS date_hour_pickup_datetime
-    FROM {{ ref('stg_taxi_trips') }}
-    {% if is_incremental() %}
-    WHERE partition_date >= (SELECT max_partition_date FROM get_max_partition_date)
-    {% endif %}
-),
-
-
--- Logic
-
-final AS (
-    SELECT
-        vendor_id,
-        pickup_location_id,
-        dropoff_location_id,
-        date_hour_pickup_datetime,
-        type AS taxi_type,
-        MAX(partition_date) AS partition_date,
-        COUNT(*) AS total_trips,
-        SUM(improvement_surcharge) AS total_improvement_surcharge,
-        SUM(congestion_surcharge) AS total_congestion_surcharge,
-        SUM(mta_tax) AS total_mta_tax,
-        SUM(extra) AS total_extra,
-        SUM(IF(fee_type = 'airport', total_fee, 0)) AS total_airport_fee,
-        SUM(IF(fee_type = 'ehail', total_fee, 0)) AS total_ehail_fee,
-        {{ timestamp_mock() }} AS dwh_updated_at
-    FROM import_stg_taxi_trips
-    GROUP BY 1, 2, 3, 4, 5
-)
-
-
--- Result
+{{ int_taxi_trips_aggregation(grain_columns, metrics) }}
 
 SELECT * FROM final

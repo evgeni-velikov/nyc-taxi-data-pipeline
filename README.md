@@ -381,8 +381,7 @@ SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
 
 - **Multi-engine serving pattern**: marts are materialized as `table` in Spark/Hive for incremental
   compute, and pushed to **Snowflake as table** for BI tooling — Spark handles heavy transformations,
-  Snowflake handles fast analytical queries. Target-aware materialization is handled via `target.type`
-  in dbt config.
+  Snowflake handles fast analytical queries.
 
 ## Future Improvements
 

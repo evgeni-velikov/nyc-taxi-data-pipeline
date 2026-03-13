@@ -14,7 +14,7 @@
         unique_key=grain_columns,
         incremental_strategy='merge',
         materialized='incremental',
-        partition_by=['pickup_date'],
+        partition_by=['pickup_month'],
         cluster_by=['pickup_location_id', 'dropoff_location_id', 'vendor_id']
     )
 }}

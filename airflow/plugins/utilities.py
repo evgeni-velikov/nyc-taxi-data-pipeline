@@ -32,15 +32,12 @@ def send_notification_email(context: dict):
 def create_snowflake_export_task(task_id, source_table, target_table, cluster_by: list = None):
     return DockerOperator(
         task_id=task_id,
-        image="nyc-taxi-spark:latest",  # твоят spark image
+        image=SPARK_IMAGE,  # твоят spark image
         api_version="auto",
-        auto_remove=True,
-        docker_url="unix://var/run/docker.sock",
-        network_mode="nyc-taxi-network",  # същата мрежа като останалите контейнери
         command=[
             "spark-submit",
             "--master", SPARK_MASTER,  # не хардкоднато
-            "/app/src/exporters/snowflake_exporter.py",
+            "/app/src/jobs/export_to_snowflake.py",
             "--source_table", source_table,
             "--target_table", target_table,
             "--cluster_by", *(cluster_by or []),
@@ -51,6 +48,8 @@ def create_snowflake_export_task(task_id, source_table, target_table, cluster_by
             "SNOWFLAKE_PASSWORD": os.environ.get("SNOWFLAKE_PASSWORD"),
             "SNOWFLAKE_DATABASE": os.environ.get("SNOWFLAKE_DATABASE"),
             "SNOWFLAKE_WAREHOUSE": os.environ.get("SNOWFLAKE_WAREHOUSE"),
+            "SNOWFLAKE_SCHEMA": os.environ.get("SNOWFLAKE_SCHEMA", "NYC_TAXI"),
+            "SNOWFLAKE_ROLE": os.environ.get("SNOWFLAKE_ROLE"),
             **ENVIRONMENT_DOCKER_ARGS,
         },
         mounts=[

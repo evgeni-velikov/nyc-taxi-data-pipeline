@@ -21,6 +21,12 @@ ENV PYSPARK_PYTHON=python3
 ENV PYSPARK_DRIVER_PYTHON=python3
 ENV AWS_REGION=eu-north-1
 
+# Snowflake connectors
+RUN wget https://repo1.maven.org/maven2/net/snowflake/spark-snowflake_2.12/2.16.0-spark_3.4/spark-snowflake_2.12-2.16.0-spark_3.4.jar \
+    -P /opt/spark/jars/ && \
+    wget https://repo1.maven.org/maven2/net/snowflake/snowflake-jdbc/3.15.0/snowflake-jdbc-3.15.0.jar \
+    -P /opt/spark/jars/
+
 # S3 support
 RUN curl -L -o $SPARK_HOME/jars/hadoop-aws-3.3.4.jar \
  https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar

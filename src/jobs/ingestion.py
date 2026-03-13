@@ -23,7 +23,7 @@ def run_ingestion(spark: SparkSession, config: Config):
             f"{config.raw_file_format}"
         )
 
-        logger.info(f"Ingesting {bronze_table} for partition: {next_partition.date()}")
+        logger.info(f"Ingesting {bronze_table} for partition: {next_partition}")
         reference_schema = spark.table(bronze_table).schema
         df = read_file(spark, file_path, config.raw_file_format)
         df = normalize_schema(df=df, reference_schema=reference_schema)
@@ -35,7 +35,7 @@ def run_ingestion(spark: SparkSession, config: Config):
             .option("mergeSchema", "true")
             .saveAsTable(bronze_table)
         )
-        logger.info(f"Successfully appended partition {next_partition.date()} to {bronze_table}.")
+        logger.info(f"Successfully appended partition {next_partition} to {bronze_table}.")
 
     logger.info("Ingestion complete.")
 
@@ -53,7 +53,7 @@ def _get_next_partition(spark, table, fallback_date):
         return fallback_date
 
     next_partition = latest_partition + relativedelta(months=1)
-    logger.info(f"Latest partition for {table}: {latest_partition}, next: {next_partition.date()}")
+    logger.info(f"Latest partition for {table}: {latest_partition}, next: {next_partition}")  # без .date()
     return next_partition
 
 

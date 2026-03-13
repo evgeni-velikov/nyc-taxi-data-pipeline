@@ -25,18 +25,21 @@ It showcases a **lakehouse-style data pipeline** built with common production co
 * workflow orchestration (**Apache Airflow**)
 * transformation layer (**dbt**)
 * metadata management (**Hive Metastore**)
+* analytical serving (**Snowflake**)
 
 The stack mirrors real-world data engineering architectures while 
 remaining lightweight enough to run locally via Docker.
 
+
 ---
 
-## What’s included
+## What's included
 
 - **Apache Airflow** — orchestration and scheduling
 - **Apache Spark** — ingestion and compute
 - **dbt** — transformations (Silver/Gold) and tests
 - **Hive Metastore (MySQL-backed)** — table metadata persistence
+- **Snowflake** — serving layer for analytical queries (marts pushed via Spark connector)
 
 ---
 
@@ -52,6 +55,7 @@ remaining lightweight enough to run locally via Docker.
 2. **Transformations (dbt)** build curated **Silver** (staging/intermediate) and **Gold** (facts/marts) models.
 3. **Airflow** coordinates execution and dependencies between ingestion and transformation steps.
 4. The platform can run both **locally** (Docker Compose) and on **AWS** (EC2 + RDS + S3 + IAM + VPC).
+5. **Gold mart tables** are exported to **Snowflake** via Spark Snowflake connector for fast analytical serving.
 
 ---
 
@@ -120,6 +124,7 @@ The repository is organized as follows:
 ## Prerequisites
 
 - AWS account (for S3 access)
+- Snowflake account (for the serving layer)
 - Docker + Docker Compose
 - Git
 - Unix-like shell (macOS/Linux). The project was built on macOS but should work on Linux as well.
@@ -145,7 +150,12 @@ cp .env.example .env
 
 # Build images and start the platform
 docker compose build
+
+# Local mode (includes MySQL metastore + Airflow Postgres)
 docker compose --profile local up -d
+
+# AWS mode (uses RDS for metastore and Airflow backend — no local DB containers)
+docker compose up -d
 
 # Wait ~40-50 seconds and check containers
 docker-compose ps
@@ -153,6 +163,9 @@ docker-compose ps
 # Install dbt dependencies
 docker compose run --rm dbt dbt deps
 ```
+
+The `--profile local` flag starts the MySQL and Postgres containers used as local substitutes for RDS.
+On AWS, these are provided by RDS and the profile is not needed.
 
 The setup steps above are typically required only once (unless you wipe volumes).
 
@@ -163,7 +176,12 @@ The setup steps above are typically required only once (unless you wipe volumes)
 After the initial setup:
 
 ```bash
+# Local mode (includes MySQL metastore + Airflow Postgres)
+docker compose --profile local up -d
+
+# AWS mode (uses RDS for metastore and Airflow backend — no local DB containers)
 docker compose up -d
+
 docker compose down
 ```
 
@@ -260,6 +278,53 @@ Successful execution confirms:
 * dbt can run transformations
 * Tables are created in the target schema
 
+---
+
+## Snowflake Serving Layer
+
+After dbt builds the Gold marts in Spark/Hive, the pipeline exports them to Snowflake
+using the Spark Snowflake connector. This enables fast analytical queries without loading Spark.
+
+Before running the export pipeline, make sure your Snowflake environment has the correct database and schema.
+You can create them using the Snowflake web UI or SQL commands:
+
+```sql
+-- Create database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS TAXI_TRIPS;
+
+-- Create schema if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS TAXI_TRIPS.NYC_TAXI;
+```
+
+Make sure `SNOWFLAKE_DATABASE` and `SNOWFLAKE_SCHEMA` in your `.env` match the database and schema you create above.
+
+### Tables exported to Snowflake
+
+| Snowflake Table | Source (Gold) |
+|---|---|
+| `TRIPS_CHARGE_HOURLY` | `gold.marts_trips_charges_hourly` |
+| `TRIPS_REVENUE_HOURLY` | `gold.marts_trips_revenue_hourly` |
+| `TRIPS_ZONE_ACTIVITY_HOURLY` | `gold.marts_trips_zone_activity_hourly` |
+
+### Configure Snowflake credentials
+
+Add the following to your `.env` file (see `.env.example`):
+
+```env
+SNOWFLAKE_ACCOUNT=<your_account_identifier>
+SNOWFLAKE_USER=<your_user>
+SNOWFLAKE_PASSWORD=<your_password>
+SNOWFLAKE_ROLE=<your_role>
+SNOWFLAKE_DATABASE=TAXI_TRIPS
+SNOWFLAKE_WAREHOUSE=<your_warehouse>
+SNOWFLAKE_SCHEMA=NYC_TAXI
+```
+
+The export runs automatically as part of the **transformation DAG** in Airflow,
+after the Gold models are built.
+
+---
+
 ## Incremental Check
 
 Run dbt twice:
@@ -312,10 +377,10 @@ SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
 
 - **Split unpivot model by metric group**: `taxi_trips_unpivot` is split into 3 separate models
   (`int_taxi_trips_charges`, `int_taxi_trips_revenue`, `int_taxi_trips_zone_activity`) to enable
-  simple `partition_by=['partition_date']` and avoid intermediate fact tables.
+  simple `partition_by=['pickup_month']` and avoid intermediate fact tables.
 
 - **Multi-engine serving pattern**: marts are materialized as `table` in Spark/Hive for incremental
-  compute, and pushed to **Snowflake as views** for BI tooling — Spark handles heavy transformations,
+  compute, and pushed to **Snowflake as table** for BI tooling — Spark handles heavy transformations,
   Snowflake handles fast analytical queries. Target-aware materialization is handled via `target.type`
   in dbt config.
 

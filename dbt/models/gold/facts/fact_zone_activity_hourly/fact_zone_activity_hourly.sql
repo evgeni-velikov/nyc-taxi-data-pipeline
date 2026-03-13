@@ -14,7 +14,7 @@
         ],
         incremental_strategy='merge',
         materialized='incremental',
-        partition_by=['pickup_date'],
+        partition_by=['pickup_month'],
         cluster_by=['pickup_location_id', 'dropoff_location_id', 'operator_id']
     )
 }}
@@ -35,7 +35,7 @@ WITH
 import_stg_fhv_trips AS (
     SELECT
         *,
-        DATE(pickup_datetime) AS pickup_date
+        DATE_TRUNC('MONTH', pickup_datetime) AS pickup_month
     FROM {{ ref('stg_fhv_trips') }}
     {% if is_incremental() %}
     WHERE dwh_updated_at >= (
@@ -60,7 +60,7 @@ dispatching_base_agg AS (
         COUNT(*) AS total_trips,
         BIGINT(NULL) AS total_passenger_count,
         DOUBLE(NULL) AS total_trip_distance,
-        MAX(pickup_date) AS pickup_date,
+        MAX(pickup_month) AS pickup_month,
         MAX(dwh_updated_at) AS max_dwh_updated_at,
         {{ timestamp_mock() }} AS dwh_updated_at
     FROM import_stg_fhv_trips
@@ -78,7 +78,7 @@ vendor_agg AS (
         total_trips,
         total_passenger_count,
         total_trip_distance,
-        pickup_date,
+        pickup_month,
         max_dwh_updated_at,
         dwh_updated_at
     FROM final

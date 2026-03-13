@@ -69,19 +69,19 @@ with DAG(
         task_id="snowflake_trips_charge_hourly",
         source_table="gold.marts_trips_charges_hourly",
         target_table="trips_charge_hourly",
-        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "vendor_id"],
+        cluster_by=["date", "pickup_location_id"],
     )
     snowflake_trips_revenue_hourly = create_snowflake_export_task(
         task_id="snowflake_trips_revenue_hourly",
         source_table="gold.marts_trips_revenue_hourly",
         target_table="trips_revenue_hourly",
-        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "vendor_id"],
+        cluster_by=["date", "pickup_location_id"],
     )
     snowflake_trips_zone_activity_hourly = create_snowflake_export_task(
         task_id="snowflake_trips_zone_activity_hourly",
         source_table="gold.marts_trips_zone_activity_hourly",
         target_table="trips_zone_activity_hourly",
-        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "operator_id"],
+        cluster_by=["date", "pickup_location_id"],
     )
 
     marts_trips_charges_hourly >> snowflake_trips_charge_hourly

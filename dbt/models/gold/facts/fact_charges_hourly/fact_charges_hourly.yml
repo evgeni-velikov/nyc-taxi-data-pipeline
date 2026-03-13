@@ -107,6 +107,12 @@ models:
       # Technical Columns
       # =========================
 
+      - name: pickup_month
+        description: "Date hour trunc from pickup datetime, month level."
+        data_type: date
+        tests:
+          - not_null
+
       - name: max_dwh_updated_at
         description: >
           Maximum source dwh_updated_at timestamp used as the incremental

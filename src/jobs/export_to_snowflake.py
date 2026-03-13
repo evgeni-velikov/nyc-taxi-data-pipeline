@@ -12,11 +12,12 @@ def export_to_snowflake(df: DataFrame, table_name: str, cluster_by: list[str] | 
     logger.info(f"Starting export to Snowflake: {table_name.upper()}")
     snowflake_options = {
         "sfURL": f"{os.environ.get('SNOWFLAKE_ACCOUNT')}.snowflakecomputing.com",
+        "sfAccount": os.environ.get("SNOWFLAKE_ACCOUNT"),
         "sfUser": os.environ.get("SNOWFLAKE_USER"),
         "sfPassword": os.environ.get("SNOWFLAKE_PASSWORD"),
         "sfDatabase": os.environ.get("SNOWFLAKE_DATABASE"),
         "sfWarehouse": os.environ.get("SNOWFLAKE_WAREHOUSE"),
-        "sfSchema": os.environ.get("SNOWFLAKE_SCHEMA", "MARTS"),
+        "sfSchema": os.environ.get("SNOWFLAKE_SCHEMA", "NYC_TAXI"),
         "sfRole": os.environ.get("SNOWFLAKE_ROLE"),
     }
 
@@ -24,6 +25,8 @@ def export_to_snowflake(df: DataFrame, table_name: str, cluster_by: list[str] | 
         .format("snowflake") \
         .options(**snowflake_options) \
         .option("dbtable", table_name.upper()) \
+        .option("sfDatabase", os.environ.get("SNOWFLAKE_DATABASE")) \
+        .option("sfSchema", os.environ.get("SNOWFLAKE_SCHEMA", "NYC_TAXI")) \
         .mode("overwrite") \
         .save()
     logger.info(f"Export complete: {table_name.upper()}")
@@ -40,8 +43,8 @@ def export_to_snowflake(df: DataFrame, table_name: str, cluster_by: list[str] | 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source_table", required=True)   # gold.marts_trips_charges_hourly
-    parser.add_argument("--target_table", required=True)   # TAXI_TRIPS_TRIPS_CHARGES_HOURLY
+    parser.add_argument("--source_table", required=True)
+    parser.add_argument("--target_table", required=True)
     parser.add_argument("--cluster_by", nargs="+", default=[])
     args = parser.parse_args()
 

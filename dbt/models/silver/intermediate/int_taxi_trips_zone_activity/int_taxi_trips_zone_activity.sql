@@ -3,7 +3,7 @@
     'pickup_location_id',
     'dropoff_location_id',
     'date_hour_pickup_datetime',
-    'DATE(date_hour_pickup_datetime) AS pickup_date',
+    "DATE_TRUNC('MONTH', date_hour_pickup_datetime) AS pickup_month",
     'type AS taxi_type',
 ] %}
 {% set metrics = [
@@ -20,7 +20,7 @@
             'date_hour_pickup_datetime', 'taxi_type'
         ],
         incremental_strategy='merge',
-        partition_by=['pickup_date'],
+        partition_by=['pickup_month'],
         cluster_by=['pickup_location_id', 'dropoff_location_id', 'vendor_id']
     )
 }}

@@ -85,6 +85,12 @@ models:
       # Technical Column
       # =========================
 
+      - name: pickup_month
+        description: "Date hour trunc from pickup datetime, month level."
+        data_type: date
+        tests:
+          - not_null
+
       - name: dwh_updated_at
         description: "Timestamp when the record was processed in the DWH."
         data_type: timestamp

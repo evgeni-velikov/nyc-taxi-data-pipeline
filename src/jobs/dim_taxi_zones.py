@@ -1,27 +1,34 @@
+import logging
 from pyspark.sql import SparkSession
 
 from src.common.config import Config
 from src.common.utils import read_file
 
 
+logger = logging.getLogger(__name__)
+
 def get_taxi_zones(spark: SparkSession, config: Config):
     spark.sql(f"USE SCHEMA {config.bronze_schema}")
 
     file_path = f"{config.raw_folder}/taxi_zones.csv"
+    logger.info(f"Reading taxi zones from: {file_path}")
     df = read_file(
         spark=spark, path=file_path, file_format="csv",
         options={"header": "true", "inferSchema": "true"}
     )
-    table = f"{config.catalog_name}.{config.bronze_schema}.taxi_trip_zones"
 
+    table = f"{config.catalog_name}.{config.bronze_schema}.taxi_trip_zones"
+    logger.info(f"Writing taxi zones to: {table}")
     (
         df.write.format("delta")
         .mode("overwrite")
         .option("overwriteSchema", "true")
         .saveAsTable(table)
     )
+    logger.info(f"Successfully written taxi zones to: {table}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     from src.common.spark import get_spark_session
     get_taxi_zones(spark=get_spark_session(), config=Config())

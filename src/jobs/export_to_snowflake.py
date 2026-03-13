@@ -1,8 +1,15 @@
 import os
+import logging
+import argparse
 from pyspark.sql import DataFrame
 
+from src.common.spark import get_spark_session
+
+
+logger = logging.getLogger(__name__)
 
 def export_to_snowflake(df: DataFrame, table_name: str, cluster_by: list[str] | None = None) -> None:
+    logger.info(f"Starting export to Snowflake: {table_name.upper()}")
     snowflake_options = {
         "sfURL": f"{os.environ.get('SNOWFLAKE_ACCOUNT')}.snowflakecomputing.com",
         "sfUser": os.environ.get("SNOWFLAKE_USER"),
@@ -19,20 +26,25 @@ def export_to_snowflake(df: DataFrame, table_name: str, cluster_by: list[str] | 
         .option("dbtable", table_name.upper()) \
         .mode("overwrite") \
         .save()
+    logger.info(f"Export complete: {table_name.upper()}")
 
     if cluster_by:
         columns = ", ".join(cluster_by)
+        logger.info(f"Applying clustering on: {columns}")
         alter_sql = f"ALTER TABLE {table_name.upper()} CLUSTER BY ({columns})"
         df.sparkSession.sparkContext._jvm.net.snowflake.spark.snowflake \
             .Utils.runQuery(snowflake_options, alter_sql)
+        logger.info("Clustering applied successfully")
 
 
-# from common.snowflake import export_to_snowflake
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source_table", required=True)   # gold.marts_trips_charges_hourly
+    parser.add_argument("--target_table", required=True)   # TAXI_TRIPS_TRIPS_CHARGES_HOURLY
+    parser.add_argument("--cluster_by", nargs="+", default=[])
+    args = parser.parse_args()
 
-# spark = get_spark_session()
-# df = spark.table("gold.marts_trips_charges_hourly")
-# export_to_snowflake(
-#     df=df,
-#     table_name="MARTS_TRIPS_CHARGES_HOURLY",
-#     cluster_by=["date", "pickup_location_id", "dropoff_location_id"]
-# )
+    spark = get_spark_session()
+    df = spark.table(args.source_table)
+    export_to_snowflake(df=df, table_name=args.target_table, cluster_by=args.cluster_by)

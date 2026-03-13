@@ -29,6 +29,38 @@ def send_notification_email(context: dict):
     # )
 
 
+def create_snowflake_export_task(task_id, source_table, target_table, cluster_by: list = None):
+    return DockerOperator(
+        task_id=task_id,
+        image="nyc-taxi-spark:latest",  # твоят spark image
+        api_version="auto",
+        auto_remove=True,
+        docker_url="unix://var/run/docker.sock",
+        network_mode="nyc-taxi-network",  # същата мрежа като останалите контейнери
+        command=[
+            "spark-submit",
+            "--master", SPARK_MASTER,  # не хардкоднато
+            "/app/src/exporters/snowflake_exporter.py",
+            "--source_table", source_table,
+            "--target_table", target_table,
+            "--cluster_by", *(cluster_by or []),
+        ],
+        environment={
+            "SNOWFLAKE_ACCOUNT": os.environ.get("SNOWFLAKE_ACCOUNT"),
+            "SNOWFLAKE_USER": os.environ.get("SNOWFLAKE_USER"),
+            "SNOWFLAKE_PASSWORD": os.environ.get("SNOWFLAKE_PASSWORD"),
+            "SNOWFLAKE_DATABASE": os.environ.get("SNOWFLAKE_DATABASE"),
+            "SNOWFLAKE_WAREHOUSE": os.environ.get("SNOWFLAKE_WAREHOUSE"),
+            **ENVIRONMENT_DOCKER_ARGS,
+        },
+        mounts=[
+            Mount(source=f"{HOST_PROJECT_PATH}/src", target="/app/src", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/warehouse", target="/warehouse", type="bind"),
+        ],
+        **COMMON_DOCKER_ARGS,
+    )
+
+
 def create_external_sensor(task_id: str, external_task_id: str, external_dag_id: str):
     return ExternalTaskSensor(
         task_id=task_id,

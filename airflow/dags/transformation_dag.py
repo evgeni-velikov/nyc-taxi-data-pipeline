@@ -7,6 +7,7 @@ from airflow.utils.task_group import TaskGroup
 from utilities import (
     create_dbt_model_task,
     create_dbt_freshness_task,
+    create_snowflake_export_task,
     send_notification_email
 )
 
@@ -42,7 +43,7 @@ with DAG(
     stg_taxi_trips >> [
         int_taxi_trips_charges,
         int_taxi_trips_revenue,
-        int_taxi_trips_zone_activity
+        int_taxi_trips_zone_activity,
     ]
 
     freshness >> [stg_fhv_trips, stg_taxi_trips]
@@ -63,3 +64,26 @@ with DAG(
     fact_zone_activity_hourly >> marts_trips_zone_activity_hourly
     fact_revenue_hourly >> marts_trips_revenue_hourly
     fact_charges_hourly >> marts_trips_charges_hourly
+
+    snowflake_trips_charge_hourly = create_snowflake_export_task(
+        task_id="snowflake_trips_charge_hourly",
+        source_table="gold.marts_trips_charges_hourly",
+        target_table="trips_charge_hourly",
+        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "vendor_id"],
+    )
+    snowflake_trips_revenue_hourly = create_snowflake_export_task(
+        task_id="snowflake_trips_revenue_hourly",
+        source_table="gold.marts_trips_revenue_hourly",
+        target_table="trips_revenue_hourly",
+        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "vendor_id"],
+    )
+    snowflake_trips_zone_activity_hourly = create_snowflake_export_task(
+        task_id="snowflake_trips_zone_activity_hourly",
+        source_table="gold.marts_trips_zone_activity_hourly",
+        target_table="trips_zone_activity_hourly",
+        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "operator_id"],
+    )
+
+    marts_trips_charges_hourly >> snowflake_trips_charge_hourly
+    marts_trips_revenue_hourly >> snowflake_trips_revenue_hourly
+    marts_trips_zone_activity_hourly >> snowflake_trips_zone_activity_hourly

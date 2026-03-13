@@ -1,7 +1,5 @@
 {{ config(materialized='view') }}
 
-{#        cluster_by=["date", "pickup_location_id", "dropoff_location_id", "operator_id"]#}
-
 {% set fact_table = 'fact_zone_activity_hourly' %}
 {% set avg_divide_col = 'total_trips' %}
 {% set grain_columns = [

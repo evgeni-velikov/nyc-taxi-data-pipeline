@@ -1,312 +1,429 @@
 # NYC Taxi Data Pipeline
 
 ![Docker](https://img.shields.io/badge/docker-compose-blue)
-![Spark](https://img.shields.io/badge/apache-spark-orange)
+![Spark](https://img.shields.io/badge/apache--spark-3.5.1-orange)
+![Delta Lake](https://img.shields.io/badge/delta--lake-3.1.0-blue)
 ![dbt](https://img.shields.io/badge/dbt-transformations-orange)
-![Airflow](https://img.shields.io/badge/apache-airflow-red)
+![Airflow](https://img.shields.io/badge/apache--airflow-2.9.3-red)
 ![Snowflake](https://img.shields.io/badge/snowflake-serving-29B5E8)
+![AWS](https://img.shields.io/badge/aws-EC2%20%2B%20RDS%20%2B%20S3-FF9900)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A lakehouse-style data pipeline that ingests NYC Taxi datasets from S3,
-processes them with Apache Spark, and builds curated analytics tables using dbt.
-The stack runs both locally via Docker Compose and on AWS (EC2 + RDS + S3),
-making it suitable for development, experimentation, and data engineering portfolio projects.
+A production-grade, lakehouse-style data pipeline that ingests NYC Taxi datasets from AWS S3,
+processes them with Apache Spark and Delta Lake, transforms them with dbt, and serves curated
+analytics tables in Snowflake. The stack runs **locally via Docker Compose** and can be
+deployed on **AWS (EC2 + RDS + S3 + IAM + VPC)**.
+
+---
+
+## Table of Contents
+
+- [Motivation](#motivation)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Design Decisions](#design-decisions)
+- [Data Source](#data-source)
+- [Airflow DAGs](#airflow-dags)
+- [dbt Models](#dbt-models)
+- [Snowflake Serving Layer](#snowflake-serving-layer)
+- [Deployment — Local](#deployment--local)
+- [Deployment — AWS](#deployment--aws)
+- [Access UIs](#access-uis)
+- [Useful Commands](#useful-commands)
+- [Reset Environment](#reset-environment)
+- [Troubleshooting](#troubleshooting)
+- [Future Improvements](#future-improvements)
 
 ---
 
 ## Motivation
 
-The purpose of this project is to demonstrate practical experience with 
-modern data engineering tools by implementing a complete local data platform.
+The purpose of this project is to demonstrate practical experience with modern data engineering
+tools by implementing a complete, end-to-end data platform.
 
-It showcases a **lakehouse-style data pipeline** built with common production components:
+It showcases a **medallion lakehouse pipeline** built with common production components:
 
-* distributed compute (**Apache Spark**)
-* workflow orchestration (**Apache Airflow**)
-* transformation layer (**dbt**)
-* metadata management (**Hive Metastore**)
-* analytical serving (**Snowflake**)
+- Distributed compute (**Apache Spark 3.5.1**)
+- ACID table format (**Delta Lake 3.1.0**)
+- Workflow orchestration (**Apache Airflow 2.9.3**)
+- Transformation layer (**dbt**)
+- Metadata management (**Hive Metastore**)
+- Analytical serving (**Snowflake**)
 
-The stack mirrors real-world data engineering architectures while 
-remaining lightweight enough to run locally via Docker.
-
-
----
-
-## What's included
-
-- **Apache Airflow** — orchestration and scheduling
-- **Apache Spark** — ingestion and compute
-- **dbt** — transformations (Silver/Gold) and tests
-- **Hive Metastore (MySQL-backed)** — table metadata persistence
-- **Snowflake** — serving layer for analytical queries (marts pushed via Spark connector)
+The stack mirrors real-world data engineering architectures while remaining lightweight enough
+to run locally via Docker and deployable on AWS for production-like environments.
 
 ---
 
-## Architecture Diagram
+## Architecture
 
 ![Architecture Diagram](docs/architecture.png)
 
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  AWS S3 (Raw Data)                   │
+│  raw/yellow_01_2020.parquet                          │
+│  raw/incremental/{year}/{table}_{MM}_{YYYY}.parquet  │
+│  raw/taxi_zones.csv                                  │
+└────────────────────┬────────────────────────────────┘
+                     │  Spark Jobs (bootstrap / ingestion)
+                     ▼
+┌─────────────────────────────────────────────────────┐
+│              BRONZE LAYER  (Delta Lake)              │
+│  bronze.yellow_trip_data  (partitioned by date)      │
+│  bronze.green_trip_data                              │
+│  bronze.fhv_trip_data                                │
+│  bronze.taxi_trip_zones                              │
+└────────────────────┬────────────────────────────────┘
+                     │  dbt (bronze views → silver staging)
+                     ▼
+┌─────────────────────────────────────────────────────┐
+│              SILVER LAYER  (Delta Lake)              │
+│  silver.stg_taxi_trips      (incremental – append)   │
+│  silver.stg_fhv_trips                                │
+│  silver.int_taxi_trips_charges  (merge, pickup_month)│
+│  silver.int_taxi_trips_revenue                       │
+│  silver.int_taxi_trips_zone_activity                 │
+└────────────────────┬────────────────────────────────┘
+                     │  dbt (silver → gold)
+                     ▼
+┌─────────────────────────────────────────────────────┐
+│               GOLD LAYER  (Delta Lake)               │
+│  gold.fact_charges_hourly    (incremental – merge)   │
+│  gold.fact_revenue_hourly                            │
+│  gold.fact_zone_activity_hourly                      │
+│  gold.dim_date_calendar                              │
+│  gold.marts_trips_charges_hourly   (view)            │
+│  gold.marts_trips_revenue_hourly                     │
+│  gold.marts_trips_zone_activity_hourly               │
+└────────────────────┬────────────────────────────────┘
+                     │  Spark Snowflake Connector
+                     ▼
+┌─────────────────────────────────────────────────────┐
+│               SNOWFLAKE  (Serving Layer)             │
+│  TAXI_TRIPS.NYC_TAXI.TRIPS_CHARGE_HOURLY             │
+│  TAXI_TRIPS.NYC_TAXI.TRIPS_REVENUE_HOURLY            │
+│  TAXI_TRIPS.NYC_TAXI.TRIPS_ZONE_ACTIVITY_HOURLY      │
+└─────────────────────────────────────────────────────┘
+```
+
+### Platform Topology
+
+```
+                ┌─────────────────────────────────────┐
+                │      LOCAL (Docker Compose)          │
+                │                                      │
+                │  ┌──────────┐  ┌──────────────────┐ │
+                │  │  MySQL   │  │   PostgreSQL      │ │
+                │  │(metastore│  │ (airflow backend) │ │
+                │  │container)│  │    container)     │ │
+                │  └──────────┘  └──────────────────┘ │
+                └─────────────────────────────────────┘
+
+                ┌─────────────────────────────────────┐
+                │      AWS (EC2 + RDS + S3)            │
+                │                                      │
+                │  ┌──────────┐  ┌──────────────────┐ │
+                │  │ RDS MySQL│  │  RDS PostgreSQL   │ │
+                │  │(metastore│  │ (airflow backend) │ │
+                │  │  RDS)    │  │     RDS)          │ │
+                │  └──────────┘  └──────────────────┘ │
+                │                                      │
+                │  EC2 Instance (Docker containers):   │
+                │  Airflow · Spark · Hive · dbt        │
+                └─────────────────────────────────────┘
+```
+
 ---
 
-## Architecture (high level)
+## Tech Stack
 
-1. **Ingestion (Spark jobs)** loads raw datasets into the **Bronze** layer.
-2. **Transformations (dbt)** build curated **Silver** (staging/intermediate) and **Gold** (facts/marts) models.
-3. **Airflow** coordinates execution and dependencies between ingestion and transformation steps.
-4. The platform can run both **locally** (Docker Compose) and on **AWS** (EC2 + RDS + S3 + IAM + VPC).
-5. **Gold mart tables** are exported to **Snowflake** via Spark Snowflake connector for fast analytical serving.
-
----
-
-## Data Source (AWS S3)
-
-This project uses Parquet datasets obtained from the official
-NYC Taxi & Limousine Commission (TLC) Trip Record Data portal:
-
-https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
-
-### Dataset Coverage
-
-* **Years:** 2020–2024
-* **Format:** Parquet
-* **Source Storage:** AWS S3
-
-The raw NYC TLC datasets are stored as **Parquet files in an AWS S3 bucket**.
-
-Access is provided via a dedicated **IAM user** with a **read-only policy scoped to a single bucket** 
-(principle of the least privilege).
-The pipeline uses these credentials to read Parquet objects from S3 during the ingestion process.
-
-### Configure S3 Credentials
-
-1. Request (or create) **IAM access keys** for the read-only user.
-2. Add the credentials to your `.env` file (based on `.env.example`).
-3. Keep the credentials local and **never commit them to the repository**.
-4. On AWS EC2: credentials are provided via IAM Instance Profile (no hardcoded keys required)
-
-> This repository does **not include any credentials**. 
-> Use environment variables or a proper secrets management solution for production deployments.
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Orchestration | Apache Airflow | 2.9.3 |
+| Distributed Compute | Apache Spark | 3.5.1 |
+| Table Format | Delta Lake | 3.1.0 |
+| Transformations | dbt-core + dbt-spark | latest |
+| Metadata Store | Hive Metastore | 3.1.3 |
+| Serving Layer | Snowflake | — |
+| Metastore DB (local) | MySQL (Docker container) | 8.0 |
+| Metastore DB (AWS) | MySQL (Amazon RDS) | 8.0 |
+| Airflow Backend (local) | PostgreSQL (Docker container) | 15 |
+| Airflow Backend (AWS) | PostgreSQL (Amazon RDS) | 15 |
+| Cloud Storage | AWS S3 | — |
+| Containerization | Docker + Docker Compose | — |
+| Language | Python | 3.x |
 
 ---
 
 ## Project Structure
 
-The repository is organized as follows:
-
 ```
+nyc-taxi-data-pipeline/
 ├── airflow/
-│   └── dags/                    # Airflow DAG definitions
+│   ├── dags/
+│   │   ├── bootstrap_dag.py          # One-time Bronze table initialization
+│   │   ├── ingestion_dag.py          # Daily incremental ingestion (Bronze)
+│   │   ├── transformation_dag.py     # dbt Silver/Gold + Snowflake export
+│   │   └── dim_yearly_dag.py         # Yearly date dimension refresh
+│   └── plugins/
+│       ├── utilities.py              # Helpers for creating Airflow tasks
+│       └── constants.py              # Pipeline constants
 │
 ├── dbt/
-│   ├── models/                  # Bronze / Silver / Gold models
-│   ├── macros/                  # dbt macros
-│   └── tests/                   # dbt tests
+│   ├── models/
+│   │   ├── bronze/                   # Source-aligned views
+│   │   ├── silver/
+│   │   │   ├── staging/              # Cleaned, unified staging models
+│   │   │   └── intermediate/         # Hourly aggregation models
+│   │   └── gold/
+│   │       ├── dimensions/           # dim_date_calendar
+│   │       ├── facts/                # Hourly fact tables
+│   │       └── marts/                # Denormalized analytics marts
+│   ├── macros/                       # Reusable SQL macros
+│   ├── dbt_project.yml
+│   ├── profiles.yml
+│   ├── sources.yml
+│   └── packages.yml
 │
 ├── src/
-│   └── jobs/                    # Spark bootstrap / ingestion / taxi_zones jobs
+│   ├── jobs/
+│   │   ├── bootstrap.py              # Creates initial Bronze tables from S3
+│   │   ├── ingestion.py              # Incremental monthly ingestion
+│   │   ├── dim_taxi_zones.py         # Loads taxi zone dimension
+│   │   └── export_to_snowflake.py    # Exports Gold marts to Snowflake
+│   └── common/
+│       ├── config.py                 # Paths, schemas, start date
+│       ├── spark.py                  # Spark session with S3/Delta/Snowflake config
+│       └── utils.py                  # Schema normalization, helpers
+│
+├── docker/
+│   ├── spark/
+│   │   ├── Dockerfile                # Spark + Delta + Snowflake connector JARs
+│   │   ├── spark-defaults.conf
+│   │   └── hive-site.xml
+│   ├── airflow/
+│   │   ├── Dockerfile
+│   │   └── airflow.cfg
+│   └── dbt/
+│       └── Dockerfile
 │
 ├── scripts/
-│   └── download-drivers.sh      # JDBC drivers for Hive metastore
+│   └── download-drivers.sh           # Downloads JDBC drivers for Hive Metastore
 │
-├── warehouse/                   # Local lakehouse storage
+├── requirements/
+│   ├── base.txt
+│   ├── spark.txt                     # PySpark + Delta Lake
+│   ├── airflow.txt                   # Airflow + Docker + Amazon providers
+│   └── dbt.txt                       # dbt-core + dbt-spark + dbt-snowflake
 │
-├── docker/                      # Dockerfiles
-│
-├── requirements/                # Python requirements for every docker container
-│
-├── .env.example                 # Environment variables template
-└── docker-compose.yml           # Platform services
+├── warehouse/                        # Local Delta Lake storage (mounted into containers)
+├── .env.example                      # Environment template (local)
+├── .env.aws                          # Environment template (AWS) — not committed
+└── docker-compose.yml                # Full platform service definitions
 ```
 
 ---
 
-## Prerequisites
+## Design Decisions
 
-- AWS account (for S3 access)
-- Snowflake account (for the serving layer)
-- Docker + Docker Compose
-- Git
-- Unix-like shell (macOS/Linux). The project was built on macOS but should work on Linux as well.
+**Split intermediate models by metric group** — The transformation layer uses three separate
+intermediate models (`int_taxi_trips_charges`, `int_taxi_trips_revenue`,
+`int_taxi_trips_zone_activity`) instead of a single wide unpivot. This allows each model to use
+a simple `partition_by=['pickup_month']` without introducing intermediate fact tables.
 
----
+**Incremental strategy by layer** — Silver uses `append` (safe because UNION logic prevents
+duplicates), while Gold uses `merge` on a unique key for idempotent updates.
 
-## Quickstart (first-time setup)
+**Multi-engine serving pattern** — Gold marts are materialized as Delta tables in Spark/Hive for
+incremental compute and then pushed to Snowflake for fast analytical queries. Spark handles
+heavy transformations; Snowflake handles BI tooling and ad-hoc analysis.
 
-```bash
-# Clone the repo
-git clone https://github.com/evgeni-velikov/nyc-taxi-data-pipeline.git
-cd nyc-taxi-data-pipeline
+**Least-privilege S3 access** — On AWS, credentials are provided via an EC2 IAM Instance Profile
+(read-only, single-bucket scope). Locally, a dedicated IAM user with an equivalent read-only policy
+is used. No credentials are ever hardcoded or committed.
 
-# Download drivers (required for metastore connectivity)
-./scripts/download-drivers.sh
-
-# Local warehouse directory (mounted into containers)
-mkdir -p warehouse
-sudo chmod 777 warehouse
-
-# Environment variables (add your S3 IAM credentials here as well)
-cp .env.example .env
-
-# Build images and start the platform
-docker compose build
-
-# Local mode (includes MySQL metastore + Airflow Postgres)
-docker compose --profile local up -d
-
-# AWS mode (uses RDS for metastore and Airflow backend — no local DB containers)
-docker compose up -d
-
-# Wait ~40-50 seconds and check containers
-docker-compose ps
-
-# Install dbt dependencies
-docker compose run --rm dbt dbt deps
-```
-
-The `--profile local` flag starts the MySQL and Postgres containers used as local substitutes for RDS.
-On AWS, these are provided by RDS and the profile is not needed.
-
-The setup steps above are typically required only once (unless you wipe volumes).
+**Same Docker Compose for local and AWS** — A single `docker-compose.yml` serves both
+environments. The `--profile local` flag toggles whether MySQL and PostgreSQL containers are
+started. On AWS, those are provided by RDS, so the flag is simply omitted.
 
 ---
 
-## Start / stop
+## Data Source
 
-After the initial setup:
+NYC Taxi & Limousine Commission (TLC) Trip Record Data:
+https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
 
-```bash
-# Local mode (includes MySQL metastore + Airflow Postgres)
-docker compose --profile local up -d
+| Property | Value |
+|----------|-------|
+| Years covered | 2020 – 2024 |
+| Format | Parquet |
+| Storage | AWS S3 (`s3a://sm-nyc-taxi-tripdata`) |
+| Data types | Yellow Taxi, Green Taxi, FHV (For-Hire Vehicles), Taxi Zones CSV |
 
-# AWS mode (uses RDS for metastore and Airflow backend — no local DB containers)
-docker compose up -d
+Raw files are organized in S3 under two prefixes:
 
-docker compose down
-```
+- `raw/` — Initial seed files (`{table}_01_2020.parquet`, `taxi_zones.csv`)
+- `raw/incremental/{year}/{table}_{MM}_{YYYY}.parquet` — Monthly incremental files
 
----
+Delta Lake datasets are written back to S3 under:
 
-## Verify dbt Connection
-
-After the platform is running, verify that dbt can connect to Spark.
-
-```bash
-docker compose run --rm dbt dbt debug
-```
-
-Expected output:
-
-* profiles.yml file is valid
-* dbt_project.yml file is valid
-* Connection test succeeds
-
-If successful, the transformation layer is correctly configured.
+- `datasets/bronze/` — Bronze Delta tables
+- `datasets/silver/` — Silver Delta tables
+- `datasets/gold/` — Gold Delta tables
 
 ---
-
-## Reset environment (clean state)
-
-Use this if metadata/storage becomes inconsistent, or you want a full reset.
-
-```bash
-docker compose down -v
-docker compose build
-docker compose --profile local up -d
-```
-
----
-
-## Access UIs
-
-### Local Platform
-* **Airflow UI:** http://localhost:8081
-* **Spark Master UI:** http://localhost:8080
-
-### AWS Platform
-Airflow UI: http://<EC2-PUBLIC-IP>:8081
-Spark Master UI: http://<EC2-PUBLIC-IP>:8080
-
-**Airflow default credentials**
-```
-username: admin 
-password: admin
-```
 
 ## Airflow DAGs
 
-This project orchestrates ingestion and transformations via Airflow DAGs located in `airflow/dags/`.
+All DAGs live in `airflow/dags/`. Tasks run Spark jobs inside Docker containers via the
+**DockerOperator**.
 
-Typical flow:
+### 1. `bootstrap_dag` — Manual trigger (run once)
 
-- **bootstrap DAG**: one-time initialization tasks (project-specific)
-- **ingestion DAG**: loads raw NYC Taxi datasets into the Bronze layer
-- **transformation DAG**: runs dbt freshness checks and builds Silver/Gold models
-- **dim_yearly DAG**: builds/refreshes time-based dimensions (project-specific)
+Initializes the Bronze layer from the first raw Parquet files on S3.
+
+```
+bootstrap_data_task
+  └─ Reads raw/{yellow,green,fhv}_01_2020.parquet from S3
+  └─ Normalizes schema + adds metadata columns
+  └─ Writes Delta tables to bronze.{yellow,green,fhv}_trip_data
+```
+
+### 2. `ingestion_dag` — Daily at 01:00 UTC
+
+Incremental monthly ingestion into Bronze. Each run advances the watermark by one month.
+
+```
+dim_taxi_zones_data
+    └─ bronze_vw_taxi_trip_zones
+        └─ ingestion_data
+            ├─ bronze_vw_yellow_trip_data
+            ├─ bronze_vw_green_trip_data
+            └─ bronze_vw_fhv_trip_data
+```
+
+### 3. `transformation_dag` — Triggered by dataset events
+
+Runs automatically when Bronze datasets are updated. Builds all Silver/Gold dbt models and
+exports marts to Snowflake.
+
+```
+dbt_source_freshness
+    ├─ stg_taxi_trips
+    └─ stg_fhv_trips
+         ├─ int_taxi_trips_charges
+         ├─ int_taxi_trips_revenue
+         └─ int_taxi_trips_zone_activity
+              ├─ fact_charges_hourly
+              ├─ fact_revenue_hourly
+              └─ fact_zone_activity_hourly
+                   ├─ marts_trips_charges_hourly
+                   ├─ marts_trips_revenue_hourly
+                   └─ marts_trips_zone_activity_hourly
+                        ├─ snowflake_trips_charge_hourly
+                        ├─ snowflake_trips_revenue_hourly
+                        └─ snowflake_trips_zone_activity_hourly
+```
+
+### 4. `dim_yearly_dag` — January 1st each year
+
+Builds/refreshes the `gold.dim_date_calendar` date dimension for the new year.
+
+```
+gold_dim_date_calendar
+  └─ dbt build --select dim_date_calendar
+```
 
 ---
 
-## dbt project
+## dbt Models
 
-dbt code lives under `dbt/`.
+### Bronze (views)
 
-### Layers
+Source-aligned views directly over the Delta tables created by Spark ingestion.
 
-- **Bronze**: source-aligned views over ingested raw tables
-- **Silver**: cleaned/standardized staging + intermediate models
-- **Gold**: facts and marts for analytics/BI
+| Model | Description |
+|-------|-------------|
+| `vw_yellow_trip_data` | Yellow taxi schema |
+| `vw_green_trip_data` | Green taxi schema |
+| `vw_fhv_trip_data` | For-hire vehicle schema |
+| `vw_taxi_trip_zones` | Zone lookup table |
 
-### Common commands
+### Silver (incremental Delta tables)
 
-Before running dbt models, make sure the **Bronze** layer is available:
+| Model | Strategy | Partition | Description |
+|-------|----------|-----------|-------------|
+| `stg_taxi_trips` | append | partition_date, type | Unified yellow + green (UNION), standardized columns, business rule filters |
+| `stg_fhv_trips` | append | partition_date | Cleaned FHV trips |
+| `int_taxi_trips_charges` | merge | pickup_month | Hourly charges/fees aggregation |
+| `int_taxi_trips_revenue` | merge | pickup_month | Hourly revenue aggregation |
+| `int_taxi_trips_zone_activity` | merge | pickup_month | Hourly pickup/dropoff zone activity |
 
-1. Open **Airflow UI**: http://localhost:8081
-2. Trigger **`bootstrap_dag`** (one-time initialization of Bronze tables)
-3. Trigger **`ingestion_dag`** (loads new raw data into Bronze, if applicable)
+### Gold (incremental Delta tables + views)
 
-Then run dbt:
+| Model | Type | Strategy | Description |
+|-------|------|----------|-------------|
+| `dim_date_calendar` | table | full refresh (yearly) | Date dimension |
+| `fact_charges_hourly` | table | merge | Base hourly charge facts |
+| `fact_revenue_hourly` | table | merge | Base hourly revenue facts |
+| `fact_zone_activity_hourly` | table | merge | Base hourly zone activity facts |
+| `marts_trips_charges_hourly` | view | — | Denormalized charge metrics |
+| `marts_trips_revenue_hourly` | view | — | Denormalized revenue metrics |
+| `marts_trips_zone_activity_hourly` | view | — | Denormalized zone activity metrics |
+
+### Common dbt commands
+
+> **Prerequisites:** Bronze layer must exist. Trigger `bootstrap_dag` and `ingestion_dag` first.
 
 ```bash
-docker compose run --rm dbt dbt run --select stg_fhv_trips
-# or
-docker compose run --rm dbt dbt build --select stg_fhv_trips
+# Debug dbt connection to Spark Thrift
+docker compose run --rm dbt dbt debug
+
+# Run a single model
+docker compose run --rm dbt dbt run --select stg_taxi_trips
+
+# Build (run + test) a model
+docker compose run --rm dbt dbt build --select stg_taxi_trips
+
+# Run all Silver models
+docker compose run --rm dbt dbt run --select silver
+
+# Run all Gold models
+docker compose run --rm dbt dbt run --select gold
+
+# Check source freshness
+docker compose run --rm dbt dbt source freshness
 ```
-
-Successful execution confirms:
-
-* Spark Thrift is reachable
-* dbt can run transformations
-* Tables are created in the target schema
 
 ---
 
 ## Snowflake Serving Layer
 
-After dbt builds the Gold marts in Spark/Hive, the pipeline exports them to Snowflake
-using the Spark Snowflake connector. This enables fast analytical queries without loading Spark.
+After dbt builds the Gold marts, the pipeline exports them to Snowflake via the
+**Spark Snowflake Connector**. This enables fast analytical queries without running Spark.
 
-Before running the export pipeline, make sure your Snowflake environment has the correct database and schema.
-You can create them using the Snowflake web UI or SQL commands:
+### Snowflake setup
+
+Create the database and schema before the first export:
 
 ```sql
--- Create database if it doesn't exist
 CREATE DATABASE IF NOT EXISTS TAXI_TRIPS;
-
--- Create schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS TAXI_TRIPS.NYC_TAXI;
 ```
 
-Make sure `SNOWFLAKE_DATABASE` and `SNOWFLAKE_SCHEMA` in your `.env` match the database and schema you create above.
+### Exported tables
 
-### Tables exported to Snowflake
-
-| Snowflake Table | Source (Gold) |
+| Snowflake Table | Source (Gold Mart) |
 |---|---|
 | `TRIPS_CHARGE_HOURLY` | `gold.marts_trips_charges_hourly` |
 | `TRIPS_REVENUE_HOURLY` | `gold.marts_trips_revenue_hourly` |
 | `TRIPS_ZONE_ACTIVITY_HOURLY` | `gold.marts_trips_zone_activity_hourly` |
 
-### Configure Snowflake credentials
+### Snowflake credentials
 
 Add the following to your `.env` file (see `.env.example`):
 
@@ -320,77 +437,392 @@ SNOWFLAKE_WAREHOUSE=<your_warehouse>
 SNOWFLAKE_SCHEMA=NYC_TAXI
 ```
 
-The export runs automatically as part of the **transformation DAG** in Airflow,
-after the Gold models are built.
+Exports run automatically as the final step of `transformation_dag`.
 
 ---
 
-## Incremental Check
+## Deployment — Local
 
-Run dbt twice:
+The local setup runs **everything in Docker containers** on your machine. MySQL and PostgreSQL
+run as containers replacing RDS.
+
+### Prerequisites
+
+- Docker + Docker Compose
+- Git
+- Unix-like shell (macOS / Linux)
+- AWS IAM access key with read-only S3 access
+- Snowflake account
+
+### First-time setup
 
 ```bash
-docker compose run --rm dbt dbt run --select stg_fhv_trips
-docker compose run --rm dbt dbt run --select stg_fhv_trips
+# 1. Clone the repo
+git clone https://github.com/evgeni-velikov/nyc-taxi-data-pipeline.git
+cd nyc-taxi-data-pipeline
+
+# 2. Download JDBC drivers (required for Hive Metastore connectivity)
+./scripts/download-drivers.sh
+
+# 3. Create local warehouse directory (mounted into Spark containers)
+mkdir -p warehouse
+sudo chmod 777 warehouse
+
+# 4. Copy the env template and fill in your credentials
+cp .env.example .env
+```
+
+Key variables to set in `.env` for local mode:
+
+```env
+# S3 / AWS
+AWS_ACCESS_KEY_ID=<your_key>
+AWS_SECRET_ACCESS_KEY=<your_secret>
+
+# Hive Metastore — points to the local MySQL container
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=hive_metastore
+MYSQL_USER=hive
+MYSQL_PASSWORD=<your_password>
+
+# Airflow backend — points to the local PostgreSQL container
+POSTGRES_HOST=airflow-postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=airflow
+POSTGRES_USER=airflow
+POSTGRES_PASSWORD=<your_password>
+
+# Snowflake
+SNOWFLAKE_ACCOUNT=<your_account>
+SNOWFLAKE_USER=<your_user>
+SNOWFLAKE_PASSWORD=<your_password>
+SNOWFLAKE_ROLE=<your_role>
+SNOWFLAKE_DATABASE=TAXI_TRIPS
+SNOWFLAKE_WAREHOUSE=<your_warehouse>
+SNOWFLAKE_SCHEMA=NYC_TAXI
+
+# Host path (absolute path to the repo on your machine)
+HOST_PROJECT_PATH=/absolute/path/to/nyc-taxi-data-pipeline
+```
+
+```bash
+# 5. Build images
+docker compose build
+
+# 6. Start the platform (--profile local starts MySQL + PostgreSQL containers)
+docker compose --profile local up -d
+
+# 7. Wait ~40–60 seconds for all services to initialize
+docker compose ps
+
+# 8. Install dbt package dependencies
+docker compose run --rm dbt dbt deps
+```
+
+### Daily start / stop
+
+```bash
+docker compose --profile local up -d
+docker compose down
+```
+
+---
+
+## Deployment — AWS
+
+The AWS setup replaces local MySQL/PostgreSQL containers with **Amazon RDS instances** and runs
+the Docker platform on an **EC2 instance**. S3 credentials are provided via an **IAM Instance
+Profile** (no hardcoded keys needed on the server).
+
+### AWS Infrastructure
+
+The following resources are required:
+
+#### VPC & Networking
+
+- **VPC** with at least one private subnet for RDS and one public (or private + NAT) subnet for EC2
+- **Security Group — EC2** (inbound rules):
+
+  | Port | Protocol | Source | Purpose |
+  |------|----------|--------|---------|
+  | 22 | TCP | Your IP | SSH access |
+  | 8080 | TCP | Your IP | Spark Master UI |
+  | 8081 | TCP | Your IP | Airflow UI |
+  | 7077 | TCP | EC2 SG | Spark cluster communication |
+  | 9083 | TCP | EC2 SG | Hive Metastore Thrift |
+  | 10000 | TCP | EC2 SG | Spark Thrift Server |
+
+- **Security Group — RDS** (inbound rules):
+
+  | Port | Protocol | Source | Purpose |
+  |------|----------|--------|---------|
+  | 3306 | TCP | EC2 SG | Hive Metastore (MySQL RDS) |
+  | 5432 | TCP | EC2 SG | Airflow backend (PostgreSQL RDS) |
+
+#### RDS Instances
+
+| Instance | Engine | Database | Purpose |
+|----------|--------|----------|---------|
+| `hive-mysql` | MySQL 8.0 | `hive_metastore` | Hive Metastore backend |
+| `airflow-postgresql` | PostgreSQL 15 | `airflow` | Airflow metadata backend |
+
+Both RDS instances must be in the same VPC as the EC2 instance and accessible via the RDS
+security group.
+
+#### EC2 Instance
+
+- **AMI:** Ubuntu 22.04 LTS
+- **Instance type:** `t3.large` or larger (Spark needs sufficient memory)
+- **Storage:** 30 GB+ EBS (for Docker images and local warehouse)
+- **IAM Instance Profile:** Attach a role with the following S3 policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::sm-nyc-taxi-tripdata",
+        "arn:aws:s3:::sm-nyc-taxi-tripdata/*"
+      ]
+    }
+  ]
+}
+```
+
+> With an Instance Profile attached, Spark uses
+> `InstanceProfileCredentialsProvider` automatically — no `AWS_ACCESS_KEY_ID`
+> or `AWS_SECRET_ACCESS_KEY` needed on the server.
+
+#### S3 Bucket
+
+The bucket `sm-nyc-taxi-tripdata` must exist and contain the raw NYC Taxi Parquet files
+organized as described in [Data Source](#data-source).
+
+---
+
+### Step-by-step AWS Deployment
+
+#### Step 1 — Provision infrastructure
+
+1. Create the VPC, subnets, and security groups as described above.
+2. Create the two RDS instances (`hive-mysql` and `airflow-postgresql`) in the private subnet.
+3. Create a database on each RDS:
+   ```sql
+   -- On MySQL RDS
+   CREATE DATABASE hive_metastore;
+
+   -- On PostgreSQL RDS
+   CREATE DATABASE airflow;
+   ```
+4. Launch the EC2 instance (Ubuntu 22.04, t3.large+) with the IAM Instance Profile attached.
+
+#### Step 2 — Install Docker on EC2
+
+```bash
+ssh ubuntu@<EC2-PUBLIC-IP>
+
+# Install Docker
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin
+
+# Allow current user to run Docker without sudo
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+#### Step 3 — Clone the repository
+
+```bash
+git clone https://github.com/evgeni-velikov/nyc-taxi-data-pipeline.git
+cd nyc-taxi-data-pipeline
+```
+
+#### Step 4 — Configure environment variables
+
+```bash
+cp .env.aws .env
+```
+
+Key variables to set in `.env` for AWS mode:
+
+```env
+# Hive Metastore — points to the MySQL RDS endpoint
+MYSQL_HOST=<hive-mysql-rds-endpoint>
+MYSQL_PORT=3306
+MYSQL_DATABASE=hive_metastore
+MYSQL_USER=<rds_user>
+MYSQL_PASSWORD=<rds_password>
+
+# Airflow backend — points to the PostgreSQL RDS endpoint
+POSTGRES_HOST=<airflow-postgresql-rds-endpoint>
+POSTGRES_PORT=5432
+POSTGRES_DB=airflow
+POSTGRES_USER=<rds_user>
+POSTGRES_PASSWORD=<rds_password>
+
+# S3 — no access key needed; EC2 Instance Profile handles credentials
+# (leave AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY empty or omit them)
+
+# Snowflake
+SNOWFLAKE_ACCOUNT=<your_account>
+SNOWFLAKE_USER=<your_user>
+SNOWFLAKE_PASSWORD=<your_password>
+SNOWFLAKE_ROLE=<your_role>
+SNOWFLAKE_DATABASE=TAXI_TRIPS
+SNOWFLAKE_WAREHOUSE=<your_warehouse>
+SNOWFLAKE_SCHEMA=NYC_TAXI
+
+# Host path on EC2
+HOST_PROJECT_PATH=/home/ubuntu/nyc-taxi-data-pipeline
+```
+
+#### Step 5 — Build and start the platform
+
+```bash
+# Download JDBC drivers
+./scripts/download-drivers.sh
+
+# Create warehouse directory
+mkdir -p warehouse
+
+# Build images
+docker compose build
+
+# Start platform — no --profile local; RDS provides the databases
+docker compose up -d
+
+# Wait ~40–60 seconds, then verify
+docker compose ps
+
+# Install dbt dependencies
+docker compose run --rm dbt dbt deps
+```
+
+#### Step 6 — Verify the platform
+
+```bash
+# Check dbt can connect to Spark Thrift
+docker compose run --rm dbt dbt debug
+
+# Open Airflow UI
+# http://<EC2-PUBLIC-IP>:8081  (admin / admin)
+```
+
+### Difference: Local vs AWS
+
+| | Local | AWS |
+|--|-------|-----|
+| MySQL (metastore) | Docker container (`--profile local`) | Amazon RDS |
+| PostgreSQL (Airflow) | Docker container (`--profile local`) | Amazon RDS |
+| Docker Compose command | `docker compose --profile local up -d` | `docker compose up -d` |
+| S3 credentials | `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` in `.env` | EC2 IAM Instance Profile (no keys needed) |
+| Delta Lake storage | Local `warehouse/` directory | AWS S3 (`datasets/` prefix) |
+| Airflow / Spark UI | `localhost:8081` / `localhost:8080` | `<EC2-IP>:8081` / `<EC2-IP>:8080` |
+
+---
+
+## Access UIs
+
+| UI | Local | AWS |
+|----|-------|-----|
+| Airflow | http://localhost:8081 | http://\<EC2-IP\>:8081 |
+| Spark Master | http://localhost:8080 | http://\<EC2-IP\>:8080 |
+
+**Default Airflow credentials:** `admin` / `admin`
+
+---
+
+## Useful Commands
+
+### Inspect tables via Spark SQL
+
+```bash
+docker compose exec spark-thrift spark-sql
+```
+
+```sql
+SHOW DATABASES;
+USE silver;
+SHOW TABLES;
+SELECT COUNT(*) FROM silver.stg_taxi_trips;
+SELECT COUNT(*) FROM gold.marts_trips_revenue_hourly;
+```
+
+### Check container logs
+
+```bash
+docker compose logs -f airflow-scheduler
+docker compose logs -f spark-master
+```
+
+### Verify dbt connection
+
+```bash
+docker compose run --rm dbt dbt debug
+```
+
+---
+
+## Reset Environment
+
+Use this to start from a clean state (wipes all volumes and data):
+
+```bash
+# Local
+docker compose down -v
+docker compose build
+docker compose --profile local up -d
+
+# AWS
+docker compose down -v
+docker compose build
+docker compose up -d
 ```
 
 ---
 
 ## Troubleshooting
 
-### dbt cannot connect to Spark (Thrift)
-- Ensure the platform is up: `docker compose ps`
-- Re-run: `docker compose run --rm dbt dbt debug`
-- If Spark Thrift is still initializing, wait ~30–60 seconds and retry.
+### dbt cannot connect to Spark Thrift
 
-### Metastore / schema issues
-If tables exist but queries fail or state is inconsistent:
+- Ensure the platform is running: `docker compose ps`
+- Thrift server may still be initializing — wait 30–60 seconds and retry
+- Re-run: `docker compose run --rm dbt dbt debug`
+
+### Metastore / schema inconsistency
+
+If tables exist but queries fail, the metastore may be out of sync with storage:
 
 ```bash
 docker compose down -v
-docker compose up -d --build
+docker compose --profile local up -d --build   # or without --profile local on AWS
 ```
+
+### S3 access issues
+
+- **Local:** Verify `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `.env`
+- **AWS:** Verify the EC2 IAM Instance Profile is attached and has `s3:GetObject` + `s3:ListBucket`
+- Ensure the bucket `sm-nyc-taxi-tripdata` exists and contains the expected file structure
+
+### RDS connectivity (AWS only)
+
+- Verify the EC2 security group is allowed in the RDS security group inbound rules
+- Both EC2 and RDS must be in the same VPC
+- Test connectivity: `nc -zv <rds-endpoint> 3306` (MySQL) or `nc -zv <rds-endpoint> 5432` (PostgreSQL)
 
 ---
 
-### Connect to Spark SQL (via Spark Thrift Server)
-
-To open a Spark SQL interactive session inside the running container:
-
-```bash
-docker compose exec spark-thrift spark-sql
-```
-
-This command executes the `spark-sql` CLI inside the `spark-thrift` container, 
-allowing you to run Spark SQL queries directly against the configured Spark environment.
-
-After connecting, you can execute SQL queries such as:
-
-```sql
-SHOW DATABASES;
-USE silver;
-SHOW TABLES;
-SELECT COUNT(*) AS c FROM silver.stg_fhv_trips;
-```
-
-## Design Decisions
-
-- **Split unpivot model by metric group**: `taxi_trips_unpivot` is split into 3 separate models
-  (`int_taxi_trips_charges`, `int_taxi_trips_revenue`, `int_taxi_trips_zone_activity`) to enable
-  simple `partition_by=['pickup_month']` and avoid intermediate fact tables.
-
-- **Multi-engine serving pattern**: marts are materialized as `table` in Spark/Hive for incremental
-  compute, and pushed to **Snowflake as table** for BI tooling — Spark handles heavy transformations,
-  Snowflake handles fast analytical queries.
-
 ## Future Improvements
 
-Possible extensions and optimizations of this project:
-
 ### Data Quality
-- extend data quality validation with additional **dbt tests** (beyond current `not_null` and `unique` checks)
-- introduce **unit tests for transformation logic** to validate business rules
+- Extend dbt tests beyond current `not_null` and `unique` checks
+- Add unit tests for transformation logic to validate business rules
 
 ### Infrastructure
-- migrate to AWS EMR + MWAA for production-grade deployment
-- add **data alerting** (e.g. anomaly detection on metric values or row counts per partition)
+- Add Terraform for provisioning EC2, RDS, IAM, VPC, and security groups
+- Migrate to AWS EMR + MWAA for a fully managed production deployment
+- Add data alerting (anomaly detection on metric values or row counts per partition)

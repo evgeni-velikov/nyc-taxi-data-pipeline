@@ -49,22 +49,6 @@ class Config:
         return f"{self.raw_folder}/incremental"
 
     @property
-    def datasets_folder(self) -> str:
-        return f"{self.storage}/datasets"
-
-    @property
-    def bronze_folder(self) -> str:
-        return f"{self.datasets_folder}/bronze"
-
-    @property
-    def silver_folder(self) -> str:
-        return f"{self.datasets_folder}/silver"
-
-    @property
-    def gold_folder(self) -> str:
-        return f"{self.datasets_folder}/gold"
-
-    @property
     def bronze_schema(self) -> str:
         return self.schemas["bronze"]
 

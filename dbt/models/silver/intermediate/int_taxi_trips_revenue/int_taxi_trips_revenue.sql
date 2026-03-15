@@ -17,7 +17,6 @@
 
 {{
     config(
-        materialized='incremental',
         unique_key=[
             'vendor_id', 'pickup_location_id', 'dropoff_location_id',
             'date_hour_pickup_datetime', 'taxi_type', 'payment_type'

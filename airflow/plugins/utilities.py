@@ -91,7 +91,7 @@ def create_spark_task(task_id: str):
         **COMMON_DOCKER_ARGS
     )
 
-def create_dbt_model_task(schema: str, model_name: str):
+def create_dbt_model_task(schema: str, model_name: str, outlets: list = None):
     return DockerOperator(
         task_id=f"{schema}_{model_name}",
         image="data-dbt:latest",
@@ -100,6 +100,7 @@ def create_dbt_model_task(schema: str, model_name: str):
         # retries=2,
         # retry_delay=timedelta(minutes=5),
         environment=ENVIRONMENT_DOCKER_ARGS,
+        outlets=outlets or [],
         mounts=[
             Mount(source=f"{HOST_PROJECT_PATH}/dbt", target="/dbt", type="bind"),
             Mount(source=f"{HOST_PROJECT_PATH}/dbt/profiles", target="/root/.dbt", type="bind"),

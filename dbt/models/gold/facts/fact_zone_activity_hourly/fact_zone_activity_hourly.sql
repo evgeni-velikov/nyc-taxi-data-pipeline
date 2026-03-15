@@ -13,7 +13,6 @@
             'date_hour_pickup_datetime', 'taxi_type',
         ],
         incremental_strategy='merge',
-        materialized='incremental',
         partition_by=['pickup_month'],
         cluster_by=['pickup_location_id', 'dropoff_location_id', 'operator_id']
     )

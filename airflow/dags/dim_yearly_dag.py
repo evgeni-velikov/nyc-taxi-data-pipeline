@@ -1,10 +1,13 @@
 from datetime import datetime
 from docker.types import Mount
 from airflow import DAG
+from airflow.datasets import Dataset
 from airflow.providers.docker.operators.docker import DockerOperator
 
 from utilities import create_dbt_model_task
 
+
+date_calendar = Dataset("gold_dim_date_calendar")
 
 with DAG(
     dag_id="dim_yearly_dag",
@@ -16,4 +19,8 @@ with DAG(
     max_active_tasks=2,
 ) as dim_yearly_dag:
 
-    create_dbt_model_task(model_name="dim_date_calendar", schema="gold")
+    create_dbt_model_task(
+        model_name="dim_date_calendar",
+        schema="gold",
+        outlets=[date_calendar]
+    )

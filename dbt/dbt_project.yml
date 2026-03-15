@@ -19,10 +19,11 @@ models:
       schema: bronze
     silver:
       +tags: ['silver']
-      +materialized: incremental
+      +materialized: "{{ 'view' if target.name == 'dev' else 'incremental' }}"
       schema: silver
     gold:
       +tags: ['gold']
+      +materialized: "{{ 'view' if target.name == 'dev' else 'incremental' }}"
       schema: gold
 
 seeds:

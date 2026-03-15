@@ -1,6 +1,5 @@
 {{
     config(
-        materialized='incremental',
         incremental_strategy='append',
         partition_by="partition_date, type",
         tags=['staging']

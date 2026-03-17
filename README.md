@@ -74,7 +74,9 @@ without code changes — the same `docker-compose.yml` serves both environments.
 
 ![Architecture Diagram](docs/architecture.png)
 
----
+### Pipeline DAG
+
+The transformation DAG shows the full dependency graph from Bronze sources through Silver, Gold, and Snowflake export:
 
 ![Transformation DAG](docs/transformation_dag.png)
 

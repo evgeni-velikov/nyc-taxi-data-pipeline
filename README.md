@@ -74,6 +74,10 @@ without code changes — the same `docker-compose.yml` serves both environments.
 
 ![Architecture Diagram](docs/architecture.png)
 
+---
+
+![Transformation DAG](docs/transformation_dag.png)
+
 ### Data Flow
 
 ```
